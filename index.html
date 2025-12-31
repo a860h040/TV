@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>IPTV — Stream UI (Hero + Rows)</title>
+
 <style>
   :root{
     --bg:#07090f;
@@ -11,7 +12,7 @@
     --panelSolid:#0e121c;
     --text:#eef2ff;
     --muted:#a8b0c4;
-    --accent:#7c3aed;      /* purple like your screenshot */
+    --accent:#7c3aed;
     --accent2:#22c55e;
     --border:rgba(255,255,255,.10);
     --shadow:0 18px 60px rgba(0,0,0,.55);
@@ -31,7 +32,7 @@
     overflow-x:hidden;
   }
 
-  /* ===== Top Bar (like the screenshot) ===== */
+  /* ===== Top Bar ===== */
   header{
     position:fixed;
     top:0; left:0; right:0;
@@ -121,7 +122,7 @@
   .err{color:#ef4444}
   .warn{color:#fbbf24}
 
-  /* ===== Search slide-down header (show/hide on click) ===== */
+  /* ===== Search slide-down ===== */
   #searchWrap{
     overflow:hidden;
     max-height:0;
@@ -182,7 +183,7 @@
   .hero{
     position:relative;
     min-height:64vh;
-    padding-top:82px; /* space for fixed header */
+    padding-top:82px;
     display:flex;
     align-items:flex-end;
   }
@@ -206,9 +207,7 @@
     gap:22px;
     align-items:end;
   }
-  .heroCard{
-    max-width:720px;
-  }
+  .heroCard{max-width:720px}
   .heroTitle{
     font-size: clamp(2rem, 4vw, 3.25rem);
     font-weight:1000;
@@ -239,10 +238,7 @@
     margin-top:16px;
     display:flex; gap:10px; flex-wrap:wrap;
   }
-  .heroRight{
-    display:flex;
-    justify-content:flex-end;
-  }
+  .heroRight{display:flex; justify-content:flex-end}
   .heroPoster{
     width:min(340px, 52vw);
     aspect-ratio: 2/3;
@@ -252,12 +248,10 @@
     overflow:hidden;
     background:rgba(255,255,255,.06);
   }
-  .heroPoster img{
-    width:100%; height:100%; object-fit:cover;
-    filter:saturate(1.05);
-  }
+  .heroPoster img{width:100%; height:100%; object-fit:cover; filter:saturate(1.05)}
 
-  /* ===== Rows (category sliders) ===== */
+  /* ===== Browse page ===== */
+  #browsePage{display:block}
   .content{
     width:min(1200px, 92vw);
     margin:0 auto;
@@ -289,6 +283,7 @@
   .row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:999px}
   .row::-webkit-scrollbar-track{background:transparent}
 
+  /* ===== Card base ===== */
   .card{
     flex:0 0 auto;
     width:160px;
@@ -313,9 +308,7 @@
     display:block;
     background:rgba(255,255,255,.05);
   }
-  .cardInfo{
-    padding:10px 10px 12px;
-  }
+  .cardInfo{padding:10px 10px 12px}
   .name{
     font-weight:950;
     font-size:.95rem;
@@ -349,45 +342,52 @@
   }
   @keyframes pulse{0%,100%{opacity:.65}50%{opacity:1}}
 
-  /* ===== Modal (See All) ===== */
-  #modal{
+  /* ===== SEE ALL PAGE (new “different page”) ===== */
+  #seeAllPage{
     display:none;
-    position:fixed; inset:0;
-    z-index:200;
-    background:rgba(0,0,0,.62);
-    backdrop-filter: blur(10px);
+    padding-top:82px; /* fixed header spacing */
   }
-  #modal.show{display:block}
-  .modalBox{
-    position:absolute;
-    left:50%; top:50%;
-    transform:translate(-50%,-50%);
-    width:min(1100px, 94vw);
-    height:min(82vh, 820px);
-    background:rgba(14,18,28,.92);
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:22px;
-    box-shadow: var(--shadow);
-    overflow:hidden;
-    display:flex; flex-direction:column;
+  .seeAllWrap{
+    width:min(1400px, 94vw);
+    margin:0 auto;
+    padding:16px 0 60px 0;
   }
-  .modalHead{
-    display:flex; align-items:center; gap:10px; justify-content:space-between;
-    padding:12px 14px;
-    border-bottom:1px solid rgba(255,255,255,.08);
-  }
-  .modalHead h3{
-    margin:0;
-    font-weight:1000;
-    font-size:1.1rem;
-  }
-  .modalGrid{
-    padding:14px;
-    overflow:auto;
-    display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  .seeAllHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
     gap:12px;
+    margin:8px 0 14px 0;
   }
+  .seeAllTitle{
+    margin:0;
+    font-size:1.2rem;
+    font-weight:1000;
+    letter-spacing:.2px;
+  }
+  .seeAllSub{color:var(--muted); font-size:.86rem; margin-top:4px}
+  .seeAllLeft{display:flex; flex-direction:column}
+
+  /* 4 per row */
+  .seeAllGrid{
+    display:grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap:18px;
+  }
+
+  /* Image size “3' x 5'” -> enforce 3:5 aspect ratio */
+  #seeAllPage .card{
+    width:100%;
+    border-radius:20px;
+  }
+  #seeAllPage .poster{
+    height:auto;
+    aspect-ratio: 3 / 5; /* 3 by 5 */
+    object-fit:cover;
+  }
+  #seeAllPage .cardInfo{padding:12px 12px 14px}
+  #seeAllPage .name{font-size:1rem}
+  #seeAllPage .meta{font-size:.85rem}
 
   /* ===== Series Drawer ===== */
   #drawer{display:none;position:fixed;inset:auto 0 0 0;background:rgba(10,12,18,.92);border-top:1px solid rgba(255,255,255,.10);max-height:68vh;overflow:auto;z-index:250;backdrop-filter:blur(10px)}
@@ -441,6 +441,9 @@
   }
 
   /* Mobile */
+  @media (max-width:980px){
+    .seeAllGrid{grid-template-columns: repeat(2, minmax(0, 1fr))}
+  }
   @media (max-width:760px){
     .heroInner{grid-template-columns:1fr; padding:22px 0 18px 0}
     .heroRight{justify-content:flex-start}
@@ -448,9 +451,11 @@
     input{min-width:120px}
     .card{width:145px}
     .poster{height:205px}
+    .seeAllGrid{grid-template-columns: repeat(2, minmax(0, 1fr))}
   }
 </style>
 </head>
+
 <body>
 
 <header id="hdr">
@@ -478,7 +483,6 @@
     <div id="status"><span class="statusPill">Not connected</span></div>
   </div>
 
-  <!-- slide-down search (appears/disappears on click) -->
   <div id="searchWrap">
     <div class="searchBar">
       <input id="search" placeholder="Type 3+ letters to search loaded rows…" />
@@ -488,50 +492,57 @@
   </div>
 </header>
 
-<section class="hero">
-  <div class="heroBg" id="heroBg"></div>
+<!-- BROWSE PAGE -->
+<div id="browsePage">
+  <section class="hero">
+    <div class="heroBg" id="heroBg"></div>
 
-  <div class="heroInner">
-    <div class="heroCard">
-      <h1 class="heroTitle" id="heroTitle">Welcome</h1>
-      <p class="heroDesc" id="heroDesc">
-        Connect, then choose TV / Movies / Series. Rows will load as you scroll — just like the layout in your screenshot.
-      </p>
+    <div class="heroInner">
+      <div class="heroCard">
+        <h1 class="heroTitle" id="heroTitle">Welcome</h1>
+        <p class="heroDesc" id="heroDesc">
+          Connect, then choose TV / Movies / Series. Rows will load as you scroll.
+        </p>
 
-      <div class="heroMeta" id="heroMeta">
-        <span class="tag">Hero</span>
-        <span class="tag">Rows</span>
-        <span class="tag">Smooth</span>
+        <div class="heroMeta" id="heroMeta">
+          <span class="tag">Hero</span>
+          <span class="tag">Rows</span>
+          <span class="tag">Smooth</span>
+        </div>
+
+        <div class="heroActions" id="heroActions">
+          <button class="primary" id="heroPlay" disabled>Play / Open</button>
+          <button class="ghost" id="heroFav" disabled>★ Favorite</button>
+        </div>
       </div>
 
-      <div class="heroActions" id="heroActions">
-        <button class="primary" id="heroPlay" disabled>Play / Open</button>
-        <button class="ghost" id="heroFav" disabled>★ Favorite</button>
+      <div class="heroRight">
+        <div class="heroPoster">
+          <img id="heroPoster" alt="Poster" src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=60" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content" id="content">
+    <div id="rows"></div>
+  </section>
+</div>
+
+<!-- SEE ALL PAGE (different page view) -->
+<div id="seeAllPage">
+  <div class="seeAllWrap">
+    <div class="seeAllHead">
+      <div class="seeAllLeft">
+        <h2 class="seeAllTitle" id="seeAllTitle">Category</h2>
+        <div class="seeAllSub" id="seeAllSub">Showing all items</div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button id="seeAllBack" class="ghost">Back</button>
       </div>
     </div>
 
-    <div class="heroRight">
-      <div class="heroPoster">
-        <img id="heroPoster" alt="Poster" src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=60" />
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="content" id="content">
-  <div id="rows"></div>
-</section>
-
-<!-- Modal for "See all" -->
-<div id="modal">
-  <div class="modalBox">
-    <div class="modalHead">
-      <h3 id="modalTitle">Category</h3>
-      <div style="display:flex; gap:8px; align-items:center;">
-        <button class="ghost" id="modalClose">Close</button>
-      </div>
-    </div>
-    <div class="modalGrid" id="modalGrid"></div>
+    <div class="seeAllGrid" id="seeAllGrid"></div>
   </div>
 </div>
 
@@ -552,11 +563,11 @@
 /* =========================
    CONFIG: Host is hidden
    ========================= */
-const HOST_DEFAULT = "http://line.tx-4k.com"; // <-- set your host here (not visible to users)
+const HOST_DEFAULT = "http://line.tx-4k.com";
 
 /* ---------------- Proxy (kept) ---------------- */
 const PROXY_MODE = 'public'; // 'public' | 'none' | 'self'
-const PROXY_BASE = '';       // your own proxy base if needed
+const PROXY_BASE = '';
 
 /* ---------------- Helpers ---------------- */
 const $ = id => document.getElementById(id);
@@ -576,6 +587,14 @@ function pickJsonText(text){
 }
 function safeName(s){ return (s||'').replace(/[^\w\s\-\.\(\)&]/g,'').trim(); }
 function trimSlash(s){ return s.replace(/\/$/,''); }
+function escapeHtml(s){
+  return String(s||'')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
 
 function wrapUrl(url){
   if (PROXY_MODE === 'none') return url;
@@ -620,16 +639,25 @@ const S = {
   loggedIn:false,
 
   kind:'',                    // live | vod | series
-  categories:[],              // [{category_id, category_name}]
-  catRowLoaded: new Set(),    // `kind|catId`
-  catCache: new Map(),        // key => full list
-  index: [],                  // search index: {nameLc, kind, catId, item, poster, meta}
+  categories:[],
+  catRowLoaded: new Set(),
+  catCache: new Map(),
+  index: [],
 
   hero: { kind:'', item:null, catId:'' },
+
+  // see all
+  seeAll: { open:false, catId:'', catName:'' }
 };
 
-const ROW_PREVIEW_COUNT = 14;   // cards shown in each slider row
+const ROW_PREVIEW_COUNT = 14;
 const SEARCH_LIMIT = 12;
+
+/* ===== Only show |EN| and |AR| categories ===== */
+function isAllowedCategoryName(name){
+  const n = String(name || '').toUpperCase();
+  return n.includes('|EN|') || n.includes('|AR|');
+}
 
 /* ===== Header behavior ===== */
 const hdr = $('hdr');
@@ -637,6 +665,41 @@ window.addEventListener('scroll', ()=>{
   if (window.scrollY > 20) hdr.classList.add('solid');
   else hdr.classList.remove('solid');
 });
+
+/* ===== Page switching (browse <-> see all) ===== */
+function showBrowsePage(push=false){
+  S.seeAll.open = false;
+  $('seeAllPage').style.display = 'none';
+  $('browsePage').style.display = 'block';
+  if (push) history.pushState({page:'browse'}, '', '#browse');
+  // keep scroll position as-is
+}
+function showSeeAllPage(catId, catName, push=false){
+  S.seeAll.open = true;
+  S.seeAll.catId = String(catId);
+  S.seeAll.catName = String(catName || '');
+  $('browsePage').style.display = 'none';
+  $('seeAllPage').style.display = 'block';
+  $('seeAllTitle').textContent = S.seeAll.catName || 'Category';
+  $('seeAllSub').textContent = `Showing all items • 4 per row`;
+  if (push) history.pushState({page:'seeall', kind:S.kind, catId:S.seeAll.catId, catName:S.seeAll.catName}, '', `#cat=${encodeURIComponent(S.seeAll.catId)}`);
+  window.scrollTo({top:0, behavior:'instant'});
+}
+
+window.addEventListener('popstate', (e)=>{
+  const st = e.state || {};
+  if (st.page === 'seeall' && st.catId){
+    openCategoryPage(st.catId, st.catName || 'Category', false).catch(()=>{});
+  } else {
+    showBrowsePage(false);
+  }
+});
+
+$('seeAllBack').onclick = ()=>{
+  // go back like a real page
+  if (history.length > 1) history.back();
+  else showBrowsePage(true);
+};
 
 /* ===== Search show/hide ===== */
 function openSearch(){
@@ -698,16 +761,20 @@ $('search').addEventListener('input', ()=>{
         <div class="resMeta">${escapeHtml(h.meta || '')}</div>
       </div>
     `;
-    div.onclick = async ()=>{
-      // ensure row loaded + scroll to it
+    div.onclick = ()=>{
+      // if we are currently in see-all page, just update hero + open
+      if (S.seeAll.open){
+        setHero(S.kind, h.item, h.catId);
+        $('searchWrap').classList.remove('open');
+        $('searchResults').classList.remove('show');
+        return;
+      }
       const rowId = `row-${S.kind}-${h.catId}`;
       const el = document.getElementById(rowId);
       if (el){
         el.scrollIntoView({behavior:'smooth', block:'center'});
-        // small highlight
         el.animate([{filter:'brightness(1.0)'},{filter:'brightness(1.25)'},{filter:'brightness(1.0)'}],{duration:600});
       }
-      // update hero
       setHero(S.kind, h.item, h.catId);
       $('searchWrap').classList.remove('open');
       $('searchResults').classList.remove('show');
@@ -735,12 +802,12 @@ $('connect').onclick = async ()=>{
       $('toggleSearch').disabled = false;
       setStatus('Login OK','ok');
 
-      // default kind prompt
       $('heroTitle').textContent = 'Connected';
-      $('heroDesc').textContent = 'Choose TV / Movies / Series to start. Rows load like your screenshot.';
+      $('heroDesc').textContent = 'Choose TV / Movies / Series to start.';
       $('heroPlay').disabled = true;
       $('heroFav').disabled = true;
       $('rows').innerHTML = '';
+      showBrowsePage(true);
     } else {
       S.loggedIn = false;
       setStatus('Invalid login','err');
@@ -774,7 +841,6 @@ function setHero(kind, item, catId){
   $('heroPoster').src = poster;
   $('heroPoster').onerror = ()=> $('heroPoster').src = placeholderImg;
 
-  // background uses the same poster
   $('heroBg').style.backgroundImage =
     `linear-gradient(90deg, rgba(7,9,15,.92) 0%, rgba(7,9,15,.55) 45%, rgba(7,9,15,.20) 75%, rgba(7,9,15,.92) 100%),
      linear-gradient(0deg, rgba(7,9,15,.98) 0%, rgba(7,9,15,.55) 28%, rgba(7,9,15,.15) 60%, rgba(7,9,15,.92) 100%),
@@ -816,14 +882,13 @@ $('heroPlay').onclick = ()=>{
 $('heroFav').onclick = ()=>{
   const {kind, item} = S.hero;
   if (kind !== 'series' || !item) return;
-  // toggle favorite
   const fakeBtn = { classList:{ add(){}, remove(){} }, textContent:'' };
   toggleFavSeries(item, fakeBtn);
   const isFav = !!store.favSeries[String(item.series_id)];
   $('heroFav').textContent = isFav ? '★ Favorited' : '★ Favorite';
 };
 
-/* ---------------- Load kind -> build rows like screenshot ---------------- */
+/* ---------------- Load kind -> build rows ---------------- */
 async function loadKind(kind){
   if (!S.loggedIn) return setStatus('Login first','err');
 
@@ -833,7 +898,8 @@ async function loadKind(kind){
   $('searchResults').innerHTML = '';
   $('searchWrap').classList.remove('open');
 
-  // reset
+  showBrowsePage(true);
+
   S.kind = kind;
   S.categories = [];
   S.catRowLoaded.clear();
@@ -842,7 +908,6 @@ async function loadKind(kind){
 
   $('rows').innerHTML = '';
 
-  // hero reset
   $('heroTitle').textContent = kind==='live'?'TV':'Browse';
   $('heroDesc').textContent = 'Scroll down — each category is a horizontal slider row.';
   $('heroPlay').disabled = true;
@@ -861,21 +926,24 @@ async function loadKind(kind){
     }
 
     const cats = await fetchJsonRobust(url);
-    S.categories = Array.isArray(cats) ? cats : [];
+    const allCats = Array.isArray(cats) ? cats : [];
+
+    // ONLY |EN| and |AR|
+    S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name));
 
     if (!S.categories.length){
-      $('rows').innerHTML = `<p style="color:var(--muted)">No categories found.</p>`;
-      setStatus('No categories','err');
+      $('rows').innerHTML = `<p style="color:var(--muted)">No |EN| or |AR| categories found.</p>`;
+      setStatus('No EN/AR categories','err');
       return;
     }
 
-    // build placeholder rows (lazy load)
-    S.categories.forEach((c, idx)=>{
+    S.categories.forEach((c)=>{
       const catId = String(c.category_id);
       const catName = c.category_name || `Category ${catId}`;
 
       const sec = document.createElement('section');
       sec.dataset.catId = catId;
+      sec.setAttribute('data-cat-id', catId);
       sec.id = `row-${kind}-${catId}`;
 
       sec.innerHTML = `
@@ -893,14 +961,13 @@ async function loadKind(kind){
 
       $('rows').appendChild(sec);
 
-      sec.querySelector('[data-seeall]').onclick = ()=> openCategoryModal(catId, catName);
+      // ✅ Now opens “different page” (not modal)
+      sec.querySelector('[data-seeall]').onclick = ()=> openCategoryPage(catId, catName, true);
     });
 
-    // observe rows to lazy-load
     setupLazyLoading();
     setStatus('Ready','ok');
 
-    // Auto-load first 2 rows quickly
     setTimeout(()=>{
       const firstTwo = S.categories.slice(0,2).map(x=>String(x.category_id));
       firstTwo.forEach(id=> loadCategoryRow(id).catch(()=>{}));
@@ -946,11 +1013,9 @@ async function loadCategoryRow(catId){
     const items = await fetchCategoryItems(catId);
     const preview = items.slice(0, ROW_PREVIEW_COUNT);
 
-    // render row
     slider.innerHTML = '';
     preview.forEach(item=>{
       slider.appendChild(makeCard(item, catId));
-      // add to search index
       const nm = (item.name||'').toLowerCase();
       if (nm){
         S.index.push({
@@ -964,11 +1029,9 @@ async function loadCategoryRow(catId){
       }
     });
 
-    // if empty
     if (!preview.length){
       slider.innerHTML = `<div style="color:var(--muted); padding:10px 6px;">No items.</div>`;
     }
-
   }catch(e){
     console.error(e);
     slider.innerHTML = `<div style="color:#ef4444; padding:10px 6px;">Failed to load this row.</div>`;
@@ -994,6 +1057,40 @@ async function fetchCategoryItems(catId){
   return arr;
 }
 
+/* ---------------- SEE ALL PAGE loader ---------------- */
+async function openCategoryPage(catId, catName, pushState=true){
+  if (!S.loggedIn) return setStatus('Login first','err');
+
+  closeDrawer();
+  $('search').value = '';
+  $('searchResults').classList.remove('show');
+  $('searchResults').innerHTML = '';
+  $('searchWrap').classList.remove('open');
+
+  showSeeAllPage(catId, catName, pushState);
+
+  const grid = $('seeAllGrid');
+  grid.innerHTML = `<div style="grid-column:1/-1; color:var(--muted); padding:8px 0;">Loading…</div>`;
+
+  try{
+    const items = await fetchCategoryItems(catId);
+    grid.innerHTML = '';
+
+    if (!items.length){
+      grid.innerHTML = `<div style="grid-column:1/-1; color:var(--muted); padding:8px 0;">No items.</div>`;
+      return;
+    }
+
+    items.forEach(item=>{
+      grid.appendChild(makeCard(item, catId));
+    });
+
+  }catch(e){
+    console.error(e);
+    grid.innerHTML = `<div style="grid-column:1/-1; color:#ef4444; padding:8px 0;">Failed to load category.</div>`;
+  }
+}
+
 /* ---------------- Cards ---------------- */
 function getPoster(kind, item){
   if (!item) return '';
@@ -1003,7 +1100,6 @@ function getPoster(kind, item){
   if (kind==='vod'){
     return (item.stream_icon && item.stream_icon !== 'null') ? item.stream_icon : '';
   }
-  // series
   return (item.cover && item.cover !== 'null') ? item.cover : (item.stream_icon || '');
 }
 
@@ -1030,7 +1126,6 @@ function makeCard(item, catId){
     </div>
   `;
 
-  // favorite star on series
   if (S.kind==='series'){
     const fav = document.createElement('div');
     const id = String(item.series_id);
@@ -1041,7 +1136,6 @@ function makeCard(item, catId){
     fav.onclick = (e)=>{
       e.stopPropagation();
       toggleFavSeries(item, fav);
-      // update hero button if this item is active
       if (S.hero.kind==='series' && S.hero.item && String(S.hero.item.series_id) === id){
         $('heroFav').textContent = (!!store.favSeries[id]) ? '★ Favorited' : '★ Favorite';
       }
@@ -1049,16 +1143,20 @@ function makeCard(item, catId){
     div.appendChild(fav);
   }
 
-  // hover updates hero (like Netflix)
   div.addEventListener('mouseenter', ()=>{
-    setHero(S.kind, item, catId);
-    $('heroPlay').disabled = false;
+    // if in browse page, hero exists; if in seeAll page, keep hero update too (harmless)
+    if ($('browsePage').style.display !== 'none'){
+      setHero(S.kind, item, catId);
+      $('heroPlay').disabled = false;
+    }
   });
 
-  // click opens
   div.onclick = ()=>{
-    setHero(S.kind, item, catId);
-    $('heroPlay').disabled = false;
+    // keep the same behavior as before: click opens stream/movie/series
+    if ($('browsePage').style.display !== 'none'){
+      setHero(S.kind, item, catId);
+      $('heroPlay').disabled = false;
+    }
 
     if (S.kind==='live'){
       const m3u8 = `${S.host}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.m3u8`;
@@ -1091,32 +1189,6 @@ function skeletonCards(n){
   return out;
 }
 
-/* ---------------- Modal (See all) ---------------- */
-$('modalClose').onclick = closeModal;
-$('modal').addEventListener('click', (e)=>{ if (e.target === $('modal')) closeModal(); });
-
-async function openCategoryModal(catId, catName){
-  $('modalTitle').textContent = catName || 'Category';
-  $('modalGrid').innerHTML = `<div style="color:var(--muted)">Loading…</div>`;
-  $('modal').classList.add('show');
-
-  try{
-    const items = await fetchCategoryItems(catId);
-    $('modalGrid').innerHTML = '';
-    if (!items.length){
-      $('modalGrid').innerHTML = `<div style="color:var(--muted)">No items.</div>`;
-      return;
-    }
-    items.forEach(item=>{
-      $('modalGrid').appendChild(makeCard(item, catId));
-    });
-  }catch(e){
-    console.error(e);
-    $('modalGrid').innerHTML = `<div style="color:#ef4444">Failed to load category.</div>`;
-  }
-}
-function closeModal(){ $('modal').classList.remove('show'); }
-
 /* ---------------- Favorites (Series) ---------------- */
 function toggleFavSeries(item, btnEl){
   const id = String(item.series_id);
@@ -1140,15 +1212,15 @@ function toggleFavSeries(item, btnEl){
   store.favSeries = favMap;
 }
 
-/* ---------------- Series drawer (kept) ---------------- */
+/* ---------------- Series drawer ---------------- */
 $('closeDrawer').onclick = ()=> closeDrawer();
-$('copyAll').onclick = ()=> {
+$('copyAll').onclick = ()=>{
   if (!S.currentSeries) return;
   const links = buildAllEpisodeLinks(S.currentSeasons);
   copyText(links.join('\n'));
   setStatus('Copied episode links','ok');
 };
-$('downloadM3U').onclick = ()=> {
+$('downloadM3U').onclick = ()=>{
   if (!S.currentSeries) return;
   const links = buildAllEpisodeLinks(S.currentSeasons);
   const m3u = buildM3U(links, S.currentSeries.name);
@@ -1161,7 +1233,6 @@ async function openSeries(serie){
   $('seasons').innerHTML = '<div style="color:var(--muted);padding:8px">Loading seasons & episodes…</div>';
   $('drawer').style.display = 'block';
 
-  // increment open count
   const counts = store.favCount;
   counts[S.currentSeries.id] = (counts[S.currentSeries.id] || 0) + 1;
   store.favCount = counts;
@@ -1274,14 +1345,10 @@ function downloadText(txt, filename){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=> URL.revokeObjectURL(url), 1000);
 }
-function escapeHtml(s){
-  return String(s||'')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
-}
+
+/* ===== Default route ===== */
+history.replaceState({page:'browse'}, '', '#browse');
 </script>
+
 </body>
 </html>
