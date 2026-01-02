@@ -11,7 +11,7 @@
       background:#0b1020; color:#eaf0ff;
     }
     .card{
-      width:min(520px, 92vw);
+      width:min(560px, 92vw);
       background:rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.12);
       border-radius:18px;
@@ -31,16 +31,15 @@
       background:rgba(255,255,255,.08);
       color:#eaf0ff;
       transition:transform .08s ease, background .15s ease;
-      min-width:170px;
+      min-width:180px;
       text-align:center;
     }
     a.btn:hover{background:rgba(255,255,255,.12)}
     a.btn:active{transform:scale(.98)}
-    a.primary{
-      background:#6d28d9;
-      border-color:rgba(255,255,255,.18);
-    }
+    a.primary{background:#6d28d9;border-color:rgba(255,255,255,.18)}
     a.primary:hover{background:#7c3aed}
+    a.secondary{background:#2563eb;border-color:rgba(255,255,255,.18)}
+    a.secondary:hover{background:#3b82f6}
     .hint{
       margin-top:14px;
       font-size:12px;
@@ -58,25 +57,28 @@
     <p>Choose one:</p>
 
     <div class="btns">
-      <!-- ✅ DOWNLOAD BUTTON (GitHub Pages) -->
-      <!-- Put app-debug.apk in the SAME folder as this HTML on GitHub Pages -->
-      <!-- Example path: /TV/app-debug.apk -->
+      <!-- ✅ Version 1 -->
       <a class="btn primary" href="./app-debug.apk" download>
-        Download (Android APK)
+        Download v1 (APK)
       </a>
 
-      <!-- ✅ WEBPAGE BUTTON -->
-      <!-- Put index2.html in the same folder too -->
+      <!-- ✅ Version 2 -->
+      <!-- Make sure the file name is EXACTLY: app-debug.apk2 -->
+      <a class="btn secondary" href="./app-debug.apk2" download>
+        Download v2 (APK2)
+      </a>
+
+      <!-- ✅ Webpage -->
       <a class="btn" href="./index2.html" target="_blank" rel="noopener">
         Webpage (index2)
       </a>
     </div>
 
     <div class="hint">
-      <b>Important:</b> For the download to work, the file <code>app-debug.apk</code> must exist at:
-      <br><code>https://a860h040.github.io/TV/app-debug.apk</code>
-      <br><br>
-      If it’s not there, upload <code>app-debug.apk</code> into the same GitHub repo folder where this page is.
+      <b>Files must exist on GitHub Pages:</b><br>
+      v1: <code>https://a860h040.github.io/TV/app-debug.apk</code><br>
+      v2: <code>https://a860h040.github.io/TV/app-debug.apk2</code><br><br>
+      Put both files in the same repo folder as this page.
     </div>
   </div>
 </body>
