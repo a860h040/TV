@@ -31,7 +31,7 @@
       background:rgba(255,255,255,.08);
       color:#eaf0ff;
       transition:transform .08s ease, background .15s ease;
-      min-width:160px;
+      min-width:170px;
       text-align:center;
     }
     a.btn:hover{background:rgba(255,255,255,.12)}
@@ -41,35 +41,42 @@
       border-color:rgba(255,255,255,.18);
     }
     a.primary:hover{background:#7c3aed}
-    .hint{margin-top:14px; font-size:12px; color:rgba(234,240,255,.65)}
+    .hint{
+      margin-top:14px;
+      font-size:12px;
+      color:rgba(234,240,255,.65);
+      line-height:1.45;
+      text-align:left;
+    }
     code{background:rgba(255,255,255,.08); padding:2px 6px; border-radius:8px}
   </style>
 </head>
+
 <body>
   <div class="card">
     <h1>TVSTAR</h1>
     <p>Choose one:</p>
 
     <div class="btns">
-      <!-- ✅ APK download (replace with your real GitHub direct URL) -->
-      <a class="btn primary"
-         href="https://github.com/a860h040/TV/app-debug.apk"
-         download>
+      <!-- ✅ DOWNLOAD BUTTON (GitHub Pages) -->
+      <!-- Put app-debug.apk in the SAME folder as this HTML on GitHub Pages -->
+      <!-- Example path: /TV/app-debug.apk -->
+      <a class="btn primary" href="./app-debug.apk" download>
         Download (Android APK)
       </a>
 
-      <!-- ✅ Web page (index2.html). If index2 is in the same folder, this works. -->
-      <a class="btn"
-         href="./index2.html"
-         target="_blank" rel="noopener">
+      <!-- ✅ WEBPAGE BUTTON -->
+      <!-- Put index2.html in the same folder too -->
+      <a class="btn" href="./index2.html" target="_blank" rel="noopener">
         Webpage (index2)
       </a>
     </div>
 
     <div class="hint">
-      Replace <code>USERNAME/REPO</code> and <code>main</code> with your GitHub repo + branch.
-      If you use GitHub Releases, use:
-      <code>https://github.com/USERNAME/REPO/releases/latest/download/app-debug.apk</code>
+      <b>Important:</b> For the download to work, the file <code>app-debug.apk</code> must exist at:
+      <br><code>https://a860h040.github.io/TV/app-debug.apk</code>
+      <br><br>
+      If it’s not there, upload <code>app-debug.apk</code> into the same GitHub repo folder where this page is.
     </div>
   </div>
 </body>
