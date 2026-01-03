@@ -92,19 +92,12 @@
   input,button{font-family:inherit}
   ::selection{ background: rgba(229,9,20,.35); }
 
-  /* ===== TV/Remote Focus Ring (works on old Samsung browsers) ===== */
-  :focus{ outline:none; }
+  /* ===== TV focus ring (remote control) ===== */
   .tv-focus{
-    box-shadow: 0 0 0 4px rgba(229,9,20,.55), 0 18px 44px rgba(0,0,0,.35) !important;
-    border-color: rgba(229,9,20,.55) !important;
-  }
-  .card.tv-focus{
-    transform: translateY(-6px) scale(1.045);
-    filter: brightness(1.06);
-  }
-  .resItem.tv-focus{
-    background: rgba(255,255,255,.08);
-    transform: translateX(2px);
+    outline: 3px solid rgba(229,9,20,.92);
+    outline-offset: 4px;
+    box-shadow: 0 0 0 8px rgba(229,9,20,.14), 0 22px 60px rgba(0,0,0,.35);
+    border-radius: 18px;
   }
 
   /* =========================================================
@@ -294,7 +287,7 @@
   body.loggedIn #connect{ display:none; }
 
   /* =========================================================
-     SEARCH OVERLAY
+     SEARCH OVERLAY (BIGGER + PREMIUM)
      ========================================================= */
   #searchWrap{
     position:fixed;
@@ -380,6 +373,14 @@
   }
   #searchResults.show{ display:block; }
 
+  #searchResults::-webkit-scrollbar{ width:11px }
+  #searchResults::-webkit-scrollbar-thumb{
+    background: rgba(255,255,255,.16);
+    border-radius:999px;
+    border: 2px solid rgba(0,0,0,.35);
+  }
+  #searchResults::-webkit-scrollbar-track{ background: transparent; }
+
   .resItem{
     display:flex;
     align-items:center;
@@ -428,7 +429,7 @@
   }
 
   /* =========================================================
-     HERO
+     HERO (Netflix vibe)
      ========================================================= */
   .hero{
     position:relative;
@@ -481,6 +482,25 @@
     padding: 22px 22px 18px;
     position:relative;
     overflow:hidden;
+  }
+  .heroCard::before{
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(520px 260px at 18% 18%, rgba(255,255,255,.14), transparent 62%);
+    opacity:.55;
+    pointer-events:none;
+  }
+  .heroCard::after{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:32px;
+    padding:1px;
+    background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(229,9,20,.22), rgba(255,255,255,.10));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events:none;
+    opacity:.75;
   }
 
   .heroTitle{
@@ -574,6 +594,13 @@
     position:relative;
     transform: translateY(10px);
   }
+  .heroPoster::before{
+    content:"";
+    position:absolute; inset:-30%;
+    background: radial-gradient(520px 320px at 30% 20%, rgba(255,255,255,.18), transparent 60%);
+    pointer-events:none;
+    filter: blur(1px);
+  }
   .heroPoster::after{
     content:"";
     position:absolute; inset:0;
@@ -610,6 +637,17 @@
     letter-spacing: .2px;
     position:relative;
   }
+  .sectionTitle::after{
+    content:"";
+    display:block;
+    width: 72px;
+    height: 3px;
+    border-radius:999px;
+    margin-top:8px;
+    background: linear-gradient(90deg, rgba(229,9,20,.95), rgba(255,255,255,.10));
+    box-shadow: 0 0 0 7px rgba(229,9,20,.08);
+    opacity:.9;
+  }
   .sectionSub{
     margin-top:3px;
     font-size: .86rem;
@@ -644,6 +682,9 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,.22) transparent;
   }
+  .row::-webkit-scrollbar{height:10px}
+  .row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px}
+  .row::-webkit-scrollbar-track{background:transparent}
 
   .rowArrow{
     position:absolute;
@@ -672,7 +713,7 @@
   .rowArrow.right{ right:-10px; }
 
   /* =========================================================
-     CARDS
+     CARDS (3D + premium hover)
      ========================================================= */
   .card{
     flex:0 0 auto;
@@ -688,6 +729,14 @@
     transition: transform .20s var(--ease), border-color .20s var(--ease), filter .20s var(--ease), box-shadow .20s var(--ease);
     transform: translateZ(0);
   }
+  .card::before{
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(420px 300px at 20% 10%, rgba(255,255,255,.14), transparent 60%);
+    opacity:.0;
+    transition: opacity .20s var(--ease);
+    pointer-events:none;
+  }
   .card::after{
     content:"";
     position:absolute; inset:0;
@@ -701,6 +750,7 @@
     filter: brightness(1.06);
     box-shadow: 0 0 0 1px rgba(229,9,20,.18), 0 28px 78px rgba(0,0,0,.45);
   }
+  .card:hover::before{ opacity:1; }
 
   .poster{
     width:100%;
@@ -957,7 +1007,7 @@
   <div class="rail">
     <div class="brand">
       <div class="brandMark" aria-hidden="true"></div>
-      <div class="brandText">STARTV</div>
+      <div class="brandText">HAMZAWYTV</div>
     </div>
 
     <!-- Prefilled credentials -->
@@ -1068,7 +1118,7 @@
         <div class="heroMeta" id="heroMeta">
           <span class="tag hot">STARTV</span>
           <span class="tag">Cinematic UI</span>
-          <span class="tag">Remote Ready</span>
+          <span class="tag">Fast Browse</span>
         </div>
 
         <div class="heroActions" id="heroActions">
@@ -1153,6 +1203,7 @@ function setStatus(msg, kind){
   const cls = kind === 'ok' ? 'ok' : kind === 'err' ? 'err' : 'warn';
   $('status').innerHTML = `<span class="statusPill ${cls}">${msg}</span>`;
 }
+
 function pickJsonText(text){
   const iObj = text.indexOf('{');
   const iArr = text.indexOf('[');
@@ -1243,17 +1294,231 @@ window.addEventListener('scroll', ()=>{
   else hdr.classList.remove('solid');
 });
 
-/* ===== TV focus helper ===== */
-let lastTvFocus = null;
+/* =========================================================
+   TV REMOTE / KEYBOARD NAV (old Samsung browsers)
+   - Arrow keys move focus
+   - OK/Enter clicks
+   - Back/Return closes search/drawer/seeAll
+   ========================================================= */
+function clearTvFocus(){
+  const cur = document.querySelector('.tv-focus');
+  if (cur) cur.classList.remove('tv-focus');
+}
 function tvFocus(el){
   if (!el) return;
-  if (lastTvFocus && lastTvFocus.classList) lastTvFocus.classList.remove('tv-focus');
-  lastTvFocus = el;
-  try{ el.focus(); }catch{}
-  if (el.classList) el.classList.add('tv-focus');
+  clearTvFocus();
+  try{ el.classList.add('tv-focus'); }catch{}
+  try{ el.focus({preventScroll:true}); }catch{ try{ el.focus(); }catch{} }
+  try{ el.scrollIntoView({block:'nearest', inline:'nearest'}); }catch{}
 }
 
-/* ===== Page switching (browse <-> see all) ===== */
+function isVisibleEl(el){
+  if (!el) return false;
+  if (el.disabled) return false;
+  const style = window.getComputedStyle(el);
+  if (style.visibility === 'hidden' || style.display === 'none') return false;
+  const r = el.getClientRects();
+  return r && r.length > 0;
+}
+
+function activeScope(){
+  if ($('searchWrap').classList.contains('open')) return $('searchWrap');
+  if ($('drawer').style.display !== 'none') return $('drawer');
+  if ($('seeAllPage').style.display !== 'none') return $('seeAllPage');
+  return $('browsePage');
+}
+
+function collectFocusable(){
+  const sel = [
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'a[href]',
+    '[tabindex="0"]',
+    'summary'
+  ].join(',');
+
+  const scope = activeScope();
+  const roots = [hdr, scope];
+
+  const all = [];
+  roots.forEach(root=>{
+    if (!root) return;
+    root.querySelectorAll(sel).forEach(el=> all.push(el));
+  });
+
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const margin = 260;
+
+  return all.filter(el=>{
+    if (!isVisibleEl(el)) return false;
+    const rect = el.getBoundingClientRect();
+    // keep nearby items only (fast)
+    if (rect.bottom < -margin) return false;
+    if (rect.top > vh + margin) return false;
+    if (rect.right < -margin) return false;
+    if (rect.left > vw + margin) return false;
+    return true;
+  });
+}
+
+function centerOf(el){
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2, r };
+}
+
+function nextByDirection(dir){
+  const cur = document.activeElement && isVisibleEl(document.activeElement) ? document.activeElement : document.querySelector('.tv-focus');
+  const items = collectFocusable();
+  if (!items.length) return null;
+
+  if (!cur || !items.includes(cur)){
+    // pick something reasonable
+    const pick = items.find(x=> x.id === 'connect') || items[0];
+    return pick;
+  }
+
+  const c = centerOf(cur);
+  let best = null;
+  let bestScore = Infinity;
+
+  for (const el of items){
+    if (el === cur) continue;
+    const p = centerOf(el);
+
+    const dx = p.x - c.x;
+    const dy = p.y - c.y;
+
+    // must be in direction
+    if (dir === 'ArrowLeft'  && dx >= -4) continue;
+    if (dir === 'ArrowRight' && dx <=  4) continue;
+    if (dir === 'ArrowUp'    && dy >= -4) continue;
+    if (dir === 'ArrowDown'  && dy <=  4) continue;
+
+    const primary = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dx) : Math.abs(dy);
+    const secondary = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dy) : Math.abs(dx);
+    const dist = Math.hypot(dx, dy);
+
+    // weight: prioritize forward movement, then alignment, then distance
+    const score = primary*1.0 + secondary*0.28 + dist*0.02;
+
+    if (score < bestScore){
+      bestScore = score;
+      best = el;
+    }
+  }
+
+  return best;
+}
+
+function closeSearchHard(){
+  $('search').value = '';
+  $('searchWrap').classList.remove('open');
+  $('searchResults').classList.remove('show');
+  $('searchResults').innerHTML = '';
+}
+
+function handleBack(){
+  // Samsung/Tizen/Old browsers can use different codes; we handle many
+  if ($('searchWrap').classList.contains('open')){
+    closeSearchHard();
+    tvFocus($('toggleSearch'));
+    return true;
+  }
+  if ($('drawer').style.display !== 'none'){
+    closeDrawer();
+    tvFocus($('heroPlay').disabled ? $('moviesBtn') : $('heroPlay'));
+    return true;
+  }
+  if (S.seeAll.open){
+    if (history.length > 1) history.back();
+    else showBrowsePage(true);
+    return true;
+  }
+  return false;
+}
+
+function handleOk(){
+  const el = document.activeElement;
+
+  // If not logged in, OK/Enter should connect (from username/password/connect)
+  if (!S.loggedIn){
+    if (el === $('username') || el === $('password') || el === $('connect')){
+      doConnect();
+      return;
+    }
+  }
+
+  // Default: click focused element
+  if (el && typeof el.click === 'function'){
+    el.click();
+  }
+}
+
+document.addEventListener('keydown', (e)=>{
+  const key = e.key;
+  const code = e.keyCode || e.which;
+
+  // Back keys (many Samsung TVs)
+  const isBack =
+    key === 'Escape' ||
+    key === 'Backspace' ||
+    key === 'BrowserBack' ||
+    key === 'GoBack' ||
+    key === 'Return' ||
+    code === 10009 ||   // Samsung/Tizen "Return"
+    code === 461  ||    // some TV remotes "Back"
+    code === 27   ||    // ESC
+    code === 8;         // Backspace
+
+  if (isBack){
+    const handled = handleBack();
+    if (handled){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    return;
+  }
+
+  // OK / Enter
+  if (key === 'Enter' || code === 13){
+    e.preventDefault();
+    e.stopPropagation();
+    handleOk();
+    return;
+  }
+
+  // Arrow navigation
+  const isArrow =
+    key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown' ||
+    code === 37 || code === 38 || code === 39 || code === 40;
+
+  if (isArrow){
+    const dir =
+      (key && key.startsWith('Arrow')) ? key :
+      (code === 37 ? 'ArrowLeft' : code === 38 ? 'ArrowUp' : code === 39 ? 'ArrowRight' : 'ArrowDown');
+
+    // Special: when search input is focused, ArrowDown jumps into results if available
+    if ($('searchWrap').classList.contains('open') && document.activeElement === $('search') && dir === 'ArrowDown'){
+      const firstRes = $('searchResults').querySelector('.resItem[tabindex="0"]');
+      if (firstRes){
+        e.preventDefault();
+        tvFocus(firstRes);
+        return;
+      }
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const next = nextByDirection(dir);
+    if (next) tvFocus(next);
+    return;
+  }
+});
+
+/* =========================================================
+   PAGE switching (browse <-> see all)
+   ========================================================= */
 function showBrowsePage(push=false){
   S.seeAll.open = false;
   $('seeAllPage').style.display = 'none';
@@ -1286,14 +1551,14 @@ $('seeAllBack').onclick = ()=>{
   else showBrowsePage(true);
 };
 
-/* ===== Search show/hide ===== */
+/* ===== Search show/hide (kept) ===== */
 function openSearch(){
   if (!S.loggedIn) return;
   $('searchWrap').classList.add('open');
-  setTimeout(()=> tvFocus($('search')), 0);
+  setTimeout(()=> $('search').focus(), 0);
 }
-function closeSearchIfEmpty(force=false){
-  if (force || ($('search').value||'').trim() === ''){
+function closeSearchIfEmpty(){
+  if (($('search').value||'').trim() === ''){
     $('searchWrap').classList.remove('open');
     $('searchResults').classList.remove('show');
     $('searchResults').innerHTML = '';
@@ -1302,20 +1567,14 @@ function closeSearchIfEmpty(force=false){
 $('toggleSearch').onclick = ()=>{
   if (!S.loggedIn) return;
   const open = $('searchWrap').classList.contains('open');
-  if (open) closeSearchIfEmpty(true);
+  if (open) closeSearchIfEmpty();
   else openSearch();
 };
-document.addEventListener('keydown', (e)=>{
-  if (e.key === 'Escape'){
-    $('search').value = '';
-    closeSearchIfEmpty(true);
-  }
-});
 document.addEventListener('click', (e)=>{
   const inside = $('searchWrap').contains(e.target) || $('toggleSearch').contains(e.target);
   if (!inside) closeSearchIfEmpty();
 });
-$('search').addEventListener('blur', ()=> setTimeout(()=>closeSearchIfEmpty(), 150));
+$('search').addEventListener('blur', ()=> setTimeout(closeSearchIfEmpty, 150));
 
 /* ===== Search improvement: auto-fetch categories until results appear ===== */
 let searchToken = 0;
@@ -1372,6 +1631,11 @@ function renderSearchHits(hits){
           <div class="resMeta">Try another keyword, or switch Movies/Series.</div>
         </div>
       </div>`;
+    // make it TV-focusable
+    const x = $('searchResults').querySelector('.resItem');
+    if (x){
+      x.addEventListener('focus', ()=>{ clearTvFocus(); x.classList.add('tv-focus'); });
+    }
     return;
   }
 
@@ -1380,7 +1644,8 @@ function renderSearchHits(hits){
   hits.forEach(h=>{
     const div = document.createElement('div');
     div.className = 'resItem';
-    div.tabIndex = 0;                 // TV remote focus
+    div.tabIndex = 0;
+
     div.innerHTML = `
       <img class="resThumb" src="${h.poster || placeholderImg}" onerror="this.src='${placeholderImg}'" />
       <div class="resText">
@@ -1388,7 +1653,9 @@ function renderSearchHits(hits){
         <div class="resMeta">${escapeHtml(h.meta || '')}</div>
       </div>
     `;
-    div.onfocus = ()=> tvFocus(div);
+
+    div.addEventListener('focus', ()=>{ clearTvFocus(); div.classList.add('tv-focus'); });
+    div.addEventListener('blur', ()=> div.classList.remove('tv-focus'));
 
     div.onclick = ()=>{
       if (S.seeAll.open){
@@ -1401,11 +1668,27 @@ function renderSearchHits(hits){
       const el = document.getElementById(rowId);
       if (el){
         el.scrollIntoView({behavior:'smooth', block:'center'});
+        el.animate([{filter:'brightness(1.0)'},{filter:'brightness(1.25)'},{filter:'brightness(1.0)'}],{duration:600});
       }
       setHero(S.kind, h.item, h.catId);
       $('searchWrap').classList.remove('open');
       $('searchResults').classList.remove('show');
+      // focus hero play for TV remote
+      setTimeout(()=> tvFocus($('heroPlay')), 60);
     };
+
+    div.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+        e.preventDefault();
+        div.click();
+      }
+      // ArrowUp from first result returns to search input
+      if ((e.key === 'ArrowUp' || (e.keyCode||e.which) === 38) && div === $('searchResults').firstElementChild){
+        e.preventDefault();
+        tvFocus($('search'));
+      }
+    });
+
     $('searchResults').appendChild(div);
   });
 }
@@ -1446,29 +1729,34 @@ $('search').addEventListener('input', async ()=>{
   renderSearchHits(hits);
 });
 
-/* =========================
-   ENTER KEY => CONNECT
-   ========================= */
-function isEnterKey(e){
-  return e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter' || e.keyCode === 13;
-}
-function tryConnectOnEnter(e){
-  if (S.loggedIn) return;
-  if (!isEnterKey(e)) return;
-  const ae = document.activeElement;
-  const onLoginFields = (ae === $('username') || ae === $('password') || ae === $('connect'));
-  if (!onLoginFields) return;
-  e.preventDefault(); e.stopPropagation();
-  if ($('connect') && !$('connect').disabled) $('connect').click();
+/* =========================================================
+   AUTO CONNECT (password finished) + Enter connects
+   ========================================================= */
+let autoConnectTimer = null;
+let isConnecting = false;
+
+function scheduleAutoConnect(){
+  if (S.loggedIn || isConnecting) return;
+
+  const u = $('username').value.trim();
+  const p = $('password').value.trim();
+  if (!u || !p) return;
+
+  clearTimeout(autoConnectTimer);
+  autoConnectTimer = setTimeout(()=> doConnect(), 600);
 }
 
-/* ---------------- Login ---------------- */
-$('connect').onclick = async ()=>{
+/* ---------------- Login (converted to function) ---------------- */
+async function doConnect(){
+  if (isConnecting || S.loggedIn) return;
+
   S.user = $('username').value.trim();
   S.pass = $('password').value.trim();
   if (!S.user || !S.pass) return setStatus('Enter username & password','err');
 
+  isConnecting = true;
   setStatus('Connecting…','warn');
+
   try{
     const url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`;
     const data = await fetchJsonRobust(url);
@@ -1484,36 +1772,43 @@ $('connect').onclick = async ()=>{
       setStatus('Login OK','ok');
 
       $('heroTitle').textContent = 'Connected';
-      $('heroDesc').textContent = 'Use TV remote arrows + OK. Choose TV / Movies / Series.';
+      $('heroDesc').textContent = 'Use remote arrows + OK. Choose TV / Movies / Series to start.';
       $('heroPlay').disabled = true;
       $('heroFav').disabled = true;
       $('rows').innerHTML = '';
       showBrowsePage(true);
 
-      // TV: put focus on Movies button after login
-      setTimeout(()=> tvFocus($('moviesBtn')), 40);
+      // TV focus to Movies button by default
+      setTimeout(()=> tvFocus($('moviesBtn')), 60);
     } else {
       S.loggedIn = false;
       document.body.classList.remove('loggedIn');
       setStatus('Invalid login','err');
-      setTimeout(()=> tvFocus($('username')), 40);
+      setTimeout(()=> tvFocus($('username')), 60);
     }
   }catch(e){
     console.error(e);
     S.loggedIn = false;
     document.body.classList.remove('loggedIn');
     setStatus('Cannot connect (API). Check host or proxy.','err');
-    setTimeout(()=> tvFocus($('username')), 40);
+    setTimeout(()=> tvFocus($('username')), 60);
+  } finally {
+    isConnecting = false;
   }
-};
+}
 
-/* Attach Enter listeners */
-$('username').addEventListener('keydown', tryConnectOnEnter);
-$('password').addEventListener('keydown', tryConnectOnEnter);
-$('connect').addEventListener('keydown', tryConnectOnEnter);
-
+$('connect').onclick = doConnect;
 $('logout').onclick = ()=> location.reload();
 
+// Auto connect when password entry finishes (works for TV on-screen keyboards too)
+$('password').addEventListener('input', scheduleAutoConnect);
+$('password').addEventListener('change', scheduleAutoConnect);
+$('password').addEventListener('blur', scheduleAutoConnect);
+$('password').addEventListener('keyup', scheduleAutoConnect);
+$('username').addEventListener('input', scheduleAutoConnect);
+$('username').addEventListener('change', scheduleAutoConnect);
+
+/* ---------------- Nav active ---------------- */
 function setActiveNav(kind){
   $('liveBtn').classList.remove('navActive');
   $('moviesBtn').classList.remove('navActive');
@@ -1536,9 +1831,9 @@ function setHero(kind, item, catId){
   $('heroTitle').textContent = name;
 
   const desc =
-    kind==='live' ? 'Press OK on Play to open the stream.' :
-    kind==='vod'  ? 'Press OK on Play to open the movie.' :
-                    'Press OK on Play to open the series episodes.';
+    kind==='live' ? 'Tap Play to open the stream.' :
+    kind==='vod'  ? 'Tap Play to open the movie.' :
+                    'Tap Play to open the series episodes.';
   $('heroDesc').textContent = desc;
 
   const poster = getPoster(kind, item) || $('heroPoster').src;
@@ -1616,7 +1911,7 @@ async function loadKind(kind){
   $('rows').innerHTML = '';
 
   $('heroTitle').textContent = kind==='live'?'TV':'Browse';
-  $('heroDesc').textContent = 'Use remote: Left/Right moves cards, Up/Down changes rows, OK opens.';
+  $('heroDesc').textContent = 'Scroll down — each category is a horizontal slider row.';
   $('heroPlay').disabled = true;
   $('heroFav').disabled = true;
 
@@ -1662,7 +1957,7 @@ async function loadKind(kind){
             <h2 class="sectionTitle">${escapeHtml(catName)}</h2>
             <div class="sectionSub">${kind==='live'?'Channels':'Titles'} load when this row becomes visible</div>
           </div>
-          <button class="ghostBtn" data-seeall="${catId}" tabindex="0">See all</button>
+          <button class="ghostBtn" data-seeall="${catId}">See all</button>
         </div>
 
         <div class="rowWrap">
@@ -1686,35 +1981,41 @@ async function loadKind(kind){
 
       $('rows').appendChild(sec);
 
-      const seeAllBtn = sec.querySelector('[data-seeall]');
-      seeAllBtn.onclick = ()=> openCategoryPage(catId, catName, true);
-      seeAllBtn.onfocus = ()=> tvFocus(seeAllBtn);
+      sec.querySelector('[data-seeall]').onclick = ()=> openCategoryPage(catId, catName, true);
 
       const rowEl = sec.querySelector(`#slider-${kind}-${catId}`);
-      const leftA = sec.querySelector(`[data-left="${catId}"]`);
-      const rightA = sec.querySelector(`[data-right="${catId}"]`);
+      const leftBtn = sec.querySelector(`[data-left="${catId}"]`);
+      const rightBtn = sec.querySelector(`[data-right="${catId}"]`);
 
-      leftA.onclick = ()=> rowEl.scrollBy({left: -Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
-      rightA.onclick = ()=> rowEl.scrollBy({left:  Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
+      leftBtn.onclick = ()=> rowEl.scrollBy({left: -Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
+      rightBtn.onclick = ()=> rowEl.scrollBy({left:  Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
 
-      leftA.onfocus = ()=> tvFocus(leftA);
-      rightA.onfocus = ()=> tvFocus(rightA);
+      // TV focus styling for arrows
+      [leftBtn, rightBtn].forEach(btn=>{
+        btn.addEventListener('focus', ()=>{ clearTvFocus(); btn.classList.add('tv-focus'); });
+        btn.addEventListener('blur', ()=> btn.classList.remove('tv-focus'));
+        btn.addEventListener('keydown', (e)=>{
+          if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+            e.preventDefault();
+            btn.click();
+          }
+        });
+      });
     });
 
     setupLazyLoading();
     setStatus('Ready','ok');
 
-    // Preload first row, then focus first card for remote
-    setTimeout(async ()=>{
-      const first = S.categories[0] ? String(S.categories[0].category_id) : null;
-      if (!first) return;
-      try{
-        await loadCategoryRow(first);
-        const slider = document.getElementById(`slider-${S.kind}-${first}`);
-        const card = slider ? slider.querySelector('.card') : null;
-        if (card) tvFocus(card);
-      }catch{}
-    }, 180);
+    setTimeout(()=>{
+      const firstTwo = S.categories.slice(0,2).map(x=>String(x.category_id));
+      firstTwo.forEach(id=> loadCategoryRow(id).catch(()=>{}));
+    }, 120);
+
+    // Focus first row for TV
+    setTimeout(()=>{
+      const firstCard = document.querySelector('#rows .card[tabindex="0"]');
+      if (firstCard) tvFocus(firstCard);
+    }, 350);
 
   }catch(e){
     console.error(e);
@@ -1757,10 +2058,8 @@ async function loadCategoryRow(catId){
     const preview = items.slice(0, ROW_PREVIEW_COUNT);
 
     slider.innerHTML = '';
-    preview.forEach((item, idx)=>{
-      const card = makeCard(item, catId, idx);
-      slider.appendChild(card);
-
+    preview.forEach(item=>{
+      slider.appendChild(makeCard(item, catId));
       const nm = (item.name||'').toLowerCase();
       if (nm){
         S.index.push({
@@ -1826,14 +2125,14 @@ async function openCategoryPage(catId, catName, pushState=true){
       return;
     }
 
-    items.forEach((item, idx)=>{
-      grid.appendChild(makeCard(item, catId, idx));
+    items.forEach(item=>{
+      grid.appendChild(makeCard(item, catId));
     });
 
-    // TV remote: focus first card
+    // TV focus first card in grid
     setTimeout(()=>{
-      const firstCard = grid.querySelector('.card');
-      if (firstCard) tvFocus(firstCard);
+      const first = grid.querySelector('.card[tabindex="0"]');
+      if (first) tvFocus(first);
     }, 60);
 
   }catch(e){
@@ -1861,12 +2160,20 @@ function getMeta(kind, item){
   return item.releaseDate || `ID ${item.series_id || ''}`;
 }
 
-function makeCard(item, catId, idx){
+function makeCard(item, catId){
   const div = document.createElement('div');
   div.className = 'card';
-  div.tabIndex = 0;                   // TV remote focusable
-  div.dataset.catId = String(catId);
-  div.dataset.idx = String(idx || 0);
+  div.tabIndex = 0;
+  div.setAttribute('role','button');
+
+  div.addEventListener('focus', ()=>{ clearTvFocus(); div.classList.add('tv-focus'); });
+  div.addEventListener('blur', ()=> div.classList.remove('tv-focus'));
+  div.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+      e.preventDefault();
+      div.click();
+    }
+  });
 
   const poster = getPoster(S.kind, item) || placeholderImg;
   const name = item.name || (S.kind==='live'?'Channel':S.kind==='vod'?'Movie':'Series');
@@ -1881,20 +2188,6 @@ function makeCard(item, catId, idx){
     </div>
   `;
 
-  div.onfocus = ()=>{
-    tvFocus(div);
-    // When remote focuses a card, update hero like hover does:
-    setHero(S.kind, item, catId);
-    $('heroPlay').disabled = false;
-
-    // keep in view inside the row
-    try{
-      div.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
-    }catch{
-      try{ div.scrollIntoView(); }catch{}
-    }
-  };
-
   if (S.kind==='series'){
     const fav = document.createElement('div');
     const id = String(item.series_id);
@@ -1902,7 +2195,18 @@ function makeCard(item, catId, idx){
     fav.className = 'favBtn ' + (isFav ? 'on' : 'off');
     fav.textContent = isFav ? '★' : '☆';
     fav.title = 'Toggle favorite';
-    fav.tabIndex = 0;                 // TV remote focusable
+    fav.tabIndex = 0;
+    fav.setAttribute('role','button');
+
+    fav.addEventListener('focus', ()=>{ clearTvFocus(); fav.classList.add('tv-focus'); });
+    fav.addEventListener('blur', ()=> fav.classList.remove('tv-focus'));
+    fav.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+        e.preventDefault();
+        fav.click();
+      }
+    });
+
     fav.onclick = (e)=>{
       e.stopPropagation();
       toggleFavSeries(item, fav);
@@ -1910,11 +2214,9 @@ function makeCard(item, catId, idx){
         $('heroFav').innerHTML = (!!store.favSeries[id]) ? '★ Favorited' : '★ Favorite';
       }
     };
-    fav.onfocus = ()=> tvFocus(fav);
     div.appendChild(fav);
   }
 
-  // Mouse hover keeps working (unchanged)
   div.addEventListener('mouseenter', ()=>{
     if ($('browsePage').style.display !== 'none'){
       setHero(S.kind, item, catId);
@@ -1947,7 +2249,7 @@ function skeletonCards(n){
   let out = '';
   for (let i=0;i<n;i++){
     out += `
-      <div class="card" tabindex="0">
+      <div class="card">
         <div class="poster skeleton"></div>
         <div class="cardInfo">
           <div class="name skeleton" style="height:14px;border-radius:10px"></div>
@@ -2007,8 +2309,6 @@ async function openSeries(serie){
   counts[S.currentSeries.id] = (counts[S.currentSeries.id] || 0) + 1;
   store.favCount = counts;
 
-  setTimeout(()=> tvFocus($('closeDrawer')), 30);
-
   try{
     const url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_series_info&series_id=${encodeURIComponent(serie.series_id)}`;
     const info = await fetchJsonRobust(url);
@@ -2032,6 +2332,15 @@ async function openSeries(serie){
       const sum = document.createElement('summary');
       sum.textContent = `Season ${seasonNo} • ${eps.length} episode(s)`;
       sum.tabIndex = 0;
+
+      sum.addEventListener('focus', ()=>{ clearTvFocus(); sum.classList.add('tv-focus'); });
+      sum.addEventListener('blur', ()=> sum.classList.remove('tv-focus'));
+      sum.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+          e.preventDefault();
+          det.open = !det.open;
+        }
+      });
 
       const wrap = document.createElement('div');
       wrap.className = 'episodes';
@@ -2075,6 +2384,12 @@ async function openSeries(serie){
 
     const first = $('seasons').querySelector('details');
     if (first) first.open = true;
+
+    // TV focus first summary in drawer
+    setTimeout(()=>{
+      const firstSum = $('seasons').querySelector('summary');
+      if (firstSum) tvFocus(firstSum);
+    }, 80);
 
   }catch(e){
     console.error(e);
@@ -2122,364 +2437,8 @@ function downloadText(txt, filename){
 /* ===== Default route ===== */
 history.replaceState({page:'browse'}, '', '#browse');
 
-/* =========================================================
-   TV REMOTE SUPPORT (Old Samsung + Tizen)
-   - Arrows navigate
-   - OK / Enter clicks
-   - Back/Return closes search/drawer/see-all
-   ========================================================= */
-function keyCode(e){ return e.keyCode || e.which || 0; }
-function isInHeader(el){ return !!(el && el.closest && el.closest('header')); }
-function isSearchOpen(){ return $('searchWrap').classList.contains('open'); }
-function isDrawerOpen(){ return $('drawer').style.display !== 'none'; }
-function isSeeAllOpen(){ return $('seeAllPage').style.display !== 'none'; }
-
-function clickActive(){
-  const el = document.activeElement;
-  if (!el) return;
-  // If focused on input, do nothing
-  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
-  try{ el.click(); }catch{}
-}
-
-function focusFirstContent(){
-  // Prefer heroPlay, else first card
-  if (!$('heroPlay').disabled) return tvFocus($('heroPlay'));
-
-  const firstRow = $('rows').querySelector('.row');
-  const firstCard = firstRow ? firstRow.querySelector('.card') : null;
-  if (firstCard) return tvFocus(firstCard);
-
-  // If see all open
-  const gridCard = $('seeAllGrid') ? $('seeAllGrid').querySelector('.card') : null;
-  if (gridCard) return tvFocus(gridCard);
-}
-
-function focusActiveNav(){
-  if ($('liveBtn').classList.contains('navActive')) return tvFocus($('liveBtn'));
-  if ($('moviesBtn').classList.contains('navActive')) return tvFocus($('moviesBtn'));
-  if ($('seriesBtn').classList.contains('navActive')) return tvFocus($('seriesBtn'));
-  return tvFocus($('moviesBtn'));
-}
-
-function railItems(){
-  const list = [];
-  if (!S.loggedIn){
-    list.push($('username'), $('password'), $('connect'));
-  } else {
-    list.push($('liveBtn'), $('moviesBtn'), $('seriesBtn'), $('toggleSearch'), $('logout'));
-  }
-  return list.filter(x => x && x.offsetParent !== null && !x.disabled);
-}
-
-function moveRail(dir){ // dir = -1 up, +1 down
-  const items = railItems();
-  if (!items.length) return;
-  const cur = document.activeElement;
-  let idx = items.indexOf(cur);
-  if (idx === -1) idx = 0;
-  idx = (idx + dir + items.length) % items.length;
-  tvFocus(items[idx]);
-}
-
-function getRowFromCard(card){
-  return card ? card.closest('.row') : null;
-}
-function getRowCards(row){
-  if (!row) return [];
-  return Array.from(row.querySelectorAll('.card'));
-}
-function moveCardHorizontal(dir){ // -1 left +1 right
-  const el = document.activeElement;
-  const card = el && el.classList && el.classList.contains('card') ? el : (el && el.closest ? el.closest('.card') : null);
-  if (!card) return false;
-
-  const row = getRowFromCard(card);
-  const cards = getRowCards(row);
-  const idx = cards.indexOf(card);
-  if (idx === -1) return false;
-
-  const next = cards[idx + dir];
-  if (next){
-    tvFocus(next);
-    return true;
-  }
-
-  // Edge: try scroll row and keep last/first
-  if (row){
-    row.scrollBy({left: dir * Math.min(row.clientWidth * 0.9, 900), behavior:'smooth'});
-  }
-  return true;
-}
-
-function getAllRows(){
-  return Array.from($('rows').querySelectorAll('.row'));
-}
-
-function moveCardVertical(dir){ // -1 up +1 down across rows (browse)
-  const el = document.activeElement;
-  const card = el && el.classList && el.classList.contains('card') ? el : (el && el.closest ? el.closest('.card') : null);
-  if (!card) return false;
-
-  const row = getRowFromCard(card);
-  if (!row) return false;
-
-  const rows = getAllRows();
-  const rowIdx = rows.indexOf(row);
-  if (rowIdx === -1) return false;
-
-  const cards = getRowCards(row);
-  const idx = cards.indexOf(card);
-  const targetRow = rows[rowIdx + dir];
-  if (!targetRow) return true;
-
-  // Ensure row loads if lazy
-  const sec = targetRow.closest('section[data-cat-id]');
-  if (sec && sec.dataset && sec.dataset.catId){
-    loadCategoryRow(sec.dataset.catId).catch(()=>{});
-  }
-
-  const targetCards = getRowCards(targetRow);
-  if (!targetCards.length) return true;
-
-  const target = targetCards[Math.min(idx, targetCards.length - 1)];
-  tvFocus(target);
-
-  try{
-    sec.scrollIntoView({behavior:'smooth', block:'center'});
-  }catch{
-    try{ sec.scrollIntoView(); }catch{}
-  }
-  return true;
-}
-
-/* SeeAll grid navigation */
-function gridCols(){
-  try{
-    const g = getComputedStyle($('seeAllGrid')).gridTemplateColumns;
-    const parts = g.split(' ').filter(Boolean);
-    return Math.max(1, parts.length);
-  }catch{ return 4; }
-}
-function moveGrid(dirX, dirY){
-  const grid = $('seeAllGrid');
-  if (!grid) return false;
-
-  const cards = Array.from(grid.querySelectorAll('.card'));
-  if (!cards.length) return false;
-
-  const el = document.activeElement;
-  const card = el && el.classList && el.classList.contains('card') ? el : (el && el.closest ? el.closest('.card') : null);
-  let idx = cards.indexOf(card);
-  if (idx === -1) idx = 0;
-
-  const cols = gridCols();
-  const nextIdx = idx + dirX + (dirY * cols);
-  if (nextIdx < 0 || nextIdx >= cards.length) return true;
-
-  tvFocus(cards[nextIdx]);
-  return true;
-}
-
-/* Search remote navigation */
-function moveSearch(dir){ // -1 up +1 down
-  const wrap = $('searchResults');
-  if (!wrap || !wrap.classList.contains('show')) return false;
-
-  const items = Array.from(wrap.querySelectorAll('.resItem'));
-  if (!items.length) return false;
-
-  const el = document.activeElement;
-  if (el === $('search')){
-    if (dir > 0) tvFocus(items[0]);
-    return true;
-  }
-
-  const cur = el && el.classList && el.classList.contains('resItem') ? el : (el && el.closest ? el.closest('.resItem') : null);
-  let idx = items.indexOf(cur);
-  if (idx === -1) idx = 0;
-
-  idx = idx + dir;
-  if (idx < 0){ tvFocus($('search')); return true; }
-  if (idx >= items.length) idx = items.length - 1;
-
-  tvFocus(items[idx]);
-  return true;
-}
-
-/* Drawer remote navigation (simple) */
-function moveDrawer(dir){ // -1 up +1 down (focus within drawer)
-  const drawer = $('drawer');
-  if (!drawer || drawer.style.display === 'none') return false;
-
-  const focusables = Array.from(drawer.querySelectorAll('button, a.linkBtn, summary'))
-    .filter(x => x && x.offsetParent !== null && !x.disabled);
-
-  if (!focusables.length) return false;
-
-  const el = document.activeElement;
-  let idx = focusables.indexOf(el);
-  if (idx === -1) idx = 0;
-
-  idx = idx + dir;
-  if (idx < 0) idx = 0;
-  if (idx >= focusables.length) idx = focusables.length - 1;
-
-  tvFocus(focusables[idx]);
-  return true;
-}
-
-/* Key map (old Samsung + Tizen) */
-function isKey(e, arr){ return arr.indexOf(keyCode(e)) !== -1; }
-const K = {
-  LEFT:  [37],
-  UP:    [38],
-  RIGHT: [39],
-  DOWN:  [40],
-  ENTER: [13],
-  BACK:  [10009, 8, 461, 27],     // Tizen Back=10009, many TVs=8/461, ESC=27
-  PLAY:  [415],
-  PAUSE: [19, 413],
-  FF:    [417],
-  REW:   [412],
-};
-
-document.addEventListener('keydown', (e)=>{
-  const code = keyCode(e);
-
-  // Ignore if user typing inside search input (keep letters)
-  if (document.activeElement === $('search')){
-    // allow back/escape and arrows
-    if (!(isKey(e, K.BACK) || isKey(e, K.UP) || isKey(e, K.DOWN) || isKey(e, K.ENTER))) return;
-  }
-
-  // BACK behavior (close overlay first)
-  if (isKey(e, K.BACK)){
-    e.preventDefault(); e.stopPropagation();
-
-    if (isDrawerOpen()){ closeDrawer(); focusFirstContent(); return; }
-    if (isSearchOpen()){ closeSearchIfEmpty(true); tvFocus($('toggleSearch')); return; }
-    if (isSeeAllOpen()){ $('seeAllBack').click(); return; }
-
-    // default: go to rail
-    focusActiveNav();
-    return;
-  }
-
-  // ENTER / OK
-  if (isKey(e, K.ENTER)){
-    // If search input and results exist: open first result
-    if (isSearchOpen() && document.activeElement === $('search')){
-      const first = $('searchResults').querySelector('.resItem');
-      if (first){ e.preventDefault(); tvFocus(first); return; }
-    }
-    e.preventDefault(); e.stopPropagation();
-    clickActive();
-    return;
-  }
-
-  // Media keys (optional: focus heroPlay)
-  if (isKey(e, K.PLAY)){
-    if (!$('heroPlay').disabled){ e.preventDefault(); $('heroPlay').click(); }
-    return;
-  }
-
-  // Arrow navigation
-  if (isKey(e, K.UP) || isKey(e, K.DOWN) || isKey(e, K.LEFT) || isKey(e, K.RIGHT)){
-    const isUp = isKey(e, K.UP);
-    const isDown = isKey(e, K.DOWN);
-    const isLeft = isKey(e, K.LEFT);
-    const isRight = isKey(e, K.RIGHT);
-
-    // SEARCH overlay navigation
-    if (isSearchOpen()){
-      e.preventDefault(); e.stopPropagation();
-      if (isUp) return moveSearch(-1);
-      if (isDown) return moveSearch(1);
-      if (isLeft || isRight) return; // ignore
-      return;
-    }
-
-    // Drawer navigation
-    if (isDrawerOpen()){
-      e.preventDefault(); e.stopPropagation();
-      if (isUp) return moveDrawer(-1);
-      if (isDown) return moveDrawer(1);
-      // Left/Right in drawer: let browser handle (links/buttons)
-      return;
-    }
-
-    // If focus is in header (rail)
-    if (isInHeader(document.activeElement)){
-      e.preventDefault(); e.stopPropagation();
-
-      if (isUp) return moveRail(-1);
-      if (isDown) return moveRail(1);
-      if (isRight){
-        // Move into content
-        return focusFirstContent();
-      }
-      return; // left does nothing
-    }
-
-    // SEE ALL grid
-    if (isSeeAllOpen()){
-      e.preventDefault(); e.stopPropagation();
-      if (isLeft) return moveGrid(-1, 0);
-      if (isRight) return moveGrid(1, 0);
-      if (isUp) return moveGrid(0, -1);
-      if (isDown) return moveGrid(0, 1);
-      return;
-    }
-
-    // BROWSE rows/cards
-    // If focused on hero buttons
-    if (document.activeElement === $('heroPlay') || document.activeElement === $('heroFav')){
-      e.preventDefault(); e.stopPropagation();
-      if (isDown){
-        return focusFirstContent();
-      }
-      if (isLeft){
-        return focusActiveNav();
-      }
-      if (isRight){
-        return focusFirstContent();
-      }
-      if (isUp){
-        return focusActiveNav();
-      }
-      return;
-    }
-
-    // Focus on a card: row navigation
-    const el = document.activeElement;
-    const onCard = el && (el.classList && el.classList.contains('card')) || (el && el.closest && el.closest('.card'));
-    if (onCard){
-      e.preventDefault(); e.stopPropagation();
-      if (isLeft) return moveCardHorizontal(-1);
-      if (isRight) return moveCardHorizontal(1);
-      if (isUp) return moveCardVertical(-1);
-      if (isDown) return moveCardVertical(1);
-      return;
-    }
-
-    // Default: if in content area but not on a card -> go to first card or rail
-    e.preventDefault(); e.stopPropagation();
-    if (isLeft) return focusActiveNav();
-    if (isRight || isDown) return focusFirstContent();
-    if (isUp) return focusActiveNav();
-  }
-}, true);
-
-/* Small: give focus ring on key focus for rail buttons */
-['connect','liveBtn','moviesBtn','seriesBtn','toggleSearch','logout','heroPlay','heroFav','seeAllBack','copyAll','downloadM3U','closeDrawer']
-  .forEach(id=>{
-    const el = $(id);
-    if (!el) return;
-    el.addEventListener('focus', ()=> tvFocus(el));
-  });
-$('username').addEventListener('focus', ()=> tvFocus($('username')));
-$('password').addEventListener('focus', ()=> tvFocus($('password')));
+// initial TV focus (login screen)
+setTimeout(()=> tvFocus($('password').value ? $('password') : $('username')), 120);
 </script>
 
 </body>
