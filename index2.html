@@ -5,460 +5,990 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>STARTV — Stream UI (Hero + Rows)</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
   :root{
-    --bg:#07090f;
-    --panel:rgba(14,18,28,.72);
-    --panelSolid:#0e121c;
-    --text:#eef2ff;
-    --muted:#a8b0c4;
-    --accent:#7c3aed;
-    --accent2:#22c55e;
+    /* Base */
+    --bg:#04050a;
+    --bg2:#060717;
+    --glass:rgba(14,16,24,.62);
+    --glass2:rgba(12,14,22,.88);
+    --text:#f3f5ff;
+    --muted:rgba(243,245,255,.68);
+
+    /* Netflix-ish Accent */
+    --accent:#e50914;
+    --accent2:#ff3340;
+    --glow:rgba(229,9,20,.35);
+
+    /* UI */
     --border:rgba(255,255,255,.10);
-    --shadow:0 18px 60px rgba(0,0,0,.55);
-    --radius:18px;
-    --radiusSm:14px;
+    --border2:rgba(255,255,255,.14);
+    --shadow:0 20px 80px rgba(0,0,0,.62);
+    --shadow2:0 14px 34px rgba(0,0,0,.38);
+    --radius:26px;
+    --radiusSm:18px;
+
+    /* Layout */
+    --railW:96px;
+
+    /* Cards */
+    --cardW:172px;
+    --cardH:252px;
+
+    /* Motion */
+    --ease: cubic-bezier(.2,.9,.2,1);
   }
 
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
     margin:0;
-    background: radial-gradient(1200px 800px at 70% -10%, rgba(124,58,237,.20), transparent 55%),
-                radial-gradient(900px 700px at 20% 10%, rgba(34,197,94,.10), transparent 55%),
-                var(--bg);
+    font-family:Poppins, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     color:var(--text);
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    background:
+      radial-gradient(1200px 900px at 70% -10%, rgba(229,9,20,.20), transparent 55%),
+      radial-gradient(900px 650px at 12% 20%, rgba(109,40,217,.15), transparent 60%),
+      radial-gradient(1000px 800px at 80% 90%, rgba(59,130,246,.10), transparent 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg2) 55%, var(--bg) 100%);
     overflow-x:hidden;
   }
 
-  /* ===== Top Bar ===== */
+  /* ===== Ambient animated glow layer ===== */
+  body::before{
+    content:"";
+    position:fixed; inset:-30%;
+    background:
+      radial-gradient(900px 700px at 25% 20%, rgba(229,9,20,.14), transparent 60%),
+      radial-gradient(850px 650px at 70% 55%, rgba(59,130,246,.12), transparent 62%),
+      radial-gradient(900px 700px at 45% 95%, rgba(34,197,94,.10), transparent 60%);
+    filter: blur(28px);
+    opacity:.9;
+    animation: floatGlow 12s var(--ease) infinite alternate;
+    z-index:-2;
+    pointer-events:none;
+  }
+  @keyframes floatGlow{
+    from{ transform: translate3d(-1.4%, -1.8%, 0) scale(1.02); }
+    to  { transform: translate3d( 1.6%,  1.1%, 0) scale(1.06); }
+  }
+
+  /* ===== Film grain ===== */
+  body::after{
+    content:"";
+    position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+    opacity:.06;
+    mix-blend-mode:overlay;
+    z-index:-1;
+    pointer-events:none;
+  }
+
+  /* ===== Utility ===== */
+  .hide{display:none!important}
+  input,button{font-family:inherit}
+  ::selection{ background: rgba(229,9,20,.35); }
+
+  /* =========================================================
+     LEFT RAIL
+     ========================================================= */
   header{
     position:fixed;
-    top:0; left:0; right:0;
+    top:0; left:0;
+    width:var(--railW);
+    height:100vh;
     z-index:100;
-    transition: background .25s ease, border-color .25s ease, backdrop-filter .25s ease;
-    background:transparent;
-    border-bottom:1px solid transparent;
-    backdrop-filter: blur(10px);
+    background:
+      radial-gradient(800px 500px at 20% 0%, rgba(229,9,20,.10), transparent 55%),
+      linear-gradient(180deg, rgba(10,11,16,.96), rgba(10,11,16,.86));
+    border-right:1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(16px);
   }
   header.solid{
-    background:rgba(14,18,28,.82);
-    border-bottom:1px solid rgba(255,255,255,.08);
+    background:
+      radial-gradient(800px 500px at 20% 0%, rgba(229,9,20,.12), transparent 55%),
+      linear-gradient(180deg, rgba(10,11,16,.98), rgba(10,11,16,.92));
+    border-right:1px solid rgba(255,255,255,.10);
   }
-  .topbar{
+
+  .rail{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    padding:16px 12px;
+  }
+
+  .brand{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    margin-bottom:2px;
+    user-select:none;
+  }
+  .brandMark{
+    width:46px; height:46px;
+    border-radius:16px;
+    background:
+      radial-gradient(18px 18px at 30% 30%, rgba(255,255,255,.22), transparent 60%),
+      linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 14px 34px rgba(229,9,20,.28), 0 0 0 9px rgba(229,9,20,.10);
+    position:relative;
+    overflow:hidden;
+  }
+  .brandMark::after{
+    content:"";
+    position:absolute; inset:-45%;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.38), transparent);
+    transform: rotate(20deg) translateX(-55%);
+    animation: shine 2.35s var(--ease) infinite;
+    opacity:.55;
+  }
+  @keyframes shine{
+    0%{ transform: rotate(20deg) translateX(-65%); }
+    55%{ transform: rotate(20deg) translateX(65%); }
+    100%{ transform: rotate(20deg) translateX(65%); }
+  }
+  .brandText{
+    font-weight:900;
+    letter-spacing:.75px;
+    font-size:.95rem;
+    opacity:.95;
+  }
+
+  .credBox{
+    width:100%;
+    display:grid;
+    gap:9px;
+    margin-top:4px;
+  }
+  .pill{
     display:flex;
     align-items:center;
     gap:10px;
-    padding:12px 14px;
+    width:100%;
+    padding:10px 10px;
+    border-radius:18px;
+    background: rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.11);
+    box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    transition: border-color .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease);
   }
-  .brand{
-    display:flex; align-items:center; gap:10px;
-    font-weight:900;
-    letter-spacing:.3px;
-    white-space:nowrap;
+  .pill:focus-within{
+    border-color: rgba(229,9,20,.42);
+    background: rgba(255,255,255,.07);
+    box-shadow: 0 0 0 7px rgba(229,9,20,.12), 0 10px 30px rgba(0,0,0,.24);
   }
-  .dot{
-    width:10px;height:10px;border-radius:999px;
-    background:linear-gradient(135deg,var(--accent), #a78bfa);
-    box-shadow:0 0 0 6px rgba(124,58,237,.14);
-  }
-  .brand span{opacity:.95}
-  .spacer{flex:1}
 
-  .pill{
-    display:flex; align-items:center; gap:8px;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.10);
-    border-radius:999px;
-    padding:8px 10px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  }
   input{
+    width:100%;
     border:0;
     outline:none;
     background:transparent;
     color:var(--text);
-    min-width:140px;
-    font-size:.95rem;
+    font-size:.86rem;
+    letter-spacing:.2px;
   }
-  input::placeholder{color:rgba(238,242,255,.55)}
-  button{
-    border:0;
-    border-radius:999px;
-    padding:10px 12px;
-    cursor:pointer;
-    font-weight:900;
+  input::placeholder{color:rgba(243,245,255,.45)}
+
+  .railBtn{
+    width:100%;
+    height:50px;
+    border-radius:20px;
+    border:1px solid rgba(255,255,255,.11);
+    background: rgba(255,255,255,.05);
     color:var(--text);
-    background:rgba(255,255,255,.07);
-    border:1px solid rgba(255,255,255,.12);
-    transition: transform .12s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    cursor:pointer;
+    transition: transform .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease), filter .18s var(--ease), box-shadow .18s var(--ease);
+    position:relative;
+    overflow:hidden;
+    user-select:none;
   }
-  button:hover{transform:translateY(-1px); background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.18)}
-  button:active{transform:translateY(0px) scale(.99)}
-  button.primary{
-    background:linear-gradient(135deg, var(--accent), #a78bfa);
+  .railBtn:hover{
+    transform: translateY(-1px);
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.18);
+    box-shadow: 0 14px 28px rgba(0,0,0,.22);
+  }
+  .railBtn:active{ transform: translateY(0px) scale(.99); }
+  .railBtn:disabled{ opacity:.42; cursor:not-allowed; box-shadow:none; }
+
+  .railBtn.primary{
     border:0;
-    box-shadow:0 12px 30px rgba(124,58,237,.28);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 18px 40px rgba(229,9,20,.22);
   }
-  button.primary:hover{filter:brightness(1.05)}
-  button.ghost{background:rgba(255,255,255,.05)}
-  button:disabled{opacity:.45; cursor:not-allowed}
+  .railBtn.primary:hover{ filter: brightness(1.06); }
+
+  .ic{
+    width:20px; height:20px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    opacity:.92;
+  }
+  .lbl{ display:none; }
+
+  .navActive{
+    background: rgba(229,9,20,.16) !important;
+    border-color: rgba(229,9,20,.50) !important;
+    box-shadow: 0 0 0 7px rgba(229,9,20,.12), 0 16px 34px rgba(0,0,0,.25);
+  }
+  .navActive::before{
+    content:"";
+    position:absolute;
+    left:6px;
+    top:10px;
+    bottom:10px;
+    width:3px;
+    border-radius:999px;
+    background: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,.18));
+  }
+
+  .spacer{ flex:1; }
 
   #status{
-    margin-left:10px;
-    font-size:.86rem;
+    width:100%;
+    text-align:center;
+    font-size:.72rem;
     color:var(--muted);
-    white-space:nowrap;
   }
   .statusPill{
     display:inline-block;
-    padding:6px 10px;
-    border-radius:999px;
-    background:rgba(255,255,255,.06);
+    width:100%;
+    padding:10px 10px;
+    border-radius:18px;
+    background: rgba(255,255,255,.05);
     border:1px solid rgba(255,255,255,.10);
   }
-  .ok{color:#22c55e}
-  .err{color:#ef4444}
-  .warn{color:#fbbf24}
+  .ok{ color:#22c55e; }
+  .err{ color:#ef4444; }
+  .warn{ color:#fbbf24; }
 
-  /* ===== Search slide-down ===== */
+  body.loggedIn .credBox,
+  body.loggedIn #connect{ display:none; }
+
+  /* =========================================================
+     SEARCH OVERLAY (BIGGER + PREMIUM)
+     ========================================================= */
   #searchWrap{
+    position:fixed;
+    left: calc(var(--railW) + 18px);
+    top: 18px;
+    width: min(1120px, calc(100vw - var(--railW) - 36px));
+    max-height: 0;
     overflow:hidden;
-    max-height:0;
-    transition:max-height .25s ease, transform .25s ease, padding .25s ease;
-    transform: translateY(-6px);
-    padding:0 14px;
-    border-top:1px solid rgba(255,255,255,.06);
+    transform: translateY(-12px) scale(.995);
+    opacity:0;
+    transition: max-height .28s var(--ease), transform .28s var(--ease), opacity .18s var(--ease);
+    z-index:120;
+    pointer-events:none;
   }
-  /* ===== Search slide-down (bigger dropdown) ===== */
-#searchWrap.open{
-  /* was: max-height:120px; */
-  max-height: min(60vh, 520px);   /* taller dropdown */
-  padding:10px 14px 14px 14px;
-  transform: translateY(0);
-}
+  #searchWrap.open{
+    max-height: min(72vh, 680px);
+    transform: translateY(0) scale(1);
+    opacity:1;
+    pointer-events:auto;
+  }
+
+  .searchShell{
+    border-radius: 30px;
+    background:
+      radial-gradient(900px 260px at 18% 0%, rgba(229,9,20,.14), transparent 60%),
+      rgba(0,0,0,.58);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+    overflow:hidden;
+    position:relative;
+  }
+  .searchShell::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius: 30px;
+    padding:1px;
+    background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(229,9,20,.22), rgba(255,255,255,.10));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events:none;
+    opacity:.75;
+  }
+
   .searchBar{
-    width:min(980px, 100%);
-    background:rgba(0,0,0,.35);
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:999px;
-    padding:12px 14px;
-    display:flex; gap:10px; align-items:center;
+    padding:14px 14px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    background:
+      radial-gradient(520px 220px at 12% 0%, rgba(229,9,20,.12), transparent 60%),
+      rgba(255,255,255,.03);
   }
-  .searchBar input{min-width:0; flex:1}
+  .searchIcon{
+    width:46px; height:46px;
+    border-radius:18px;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 10px 24px rgba(0,0,0,.18);
+  }
+  .searchBar input{
+    font-size:1.08rem;
+    letter-spacing:.15px;
+  }
   .kbd{
     font-size:.78rem;
-    color:rgba(238,242,255,.65);
+    color:rgba(243,245,255,.78);
     background:rgba(255,255,255,.06);
     border:1px solid rgba(255,255,255,.12);
-    border-radius:10px;
-    padding:4px 8px;
+    border-radius:14px;
+    padding:7px 11px;
+    user-select:none;
   }
- #searchResults{
-  margin-top:10px;
-  display:none;
-  background:rgba(0,0,0,.35);
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:var(--radius);
-  overflow:auto;                  /* was: hidden */
-  max-height: calc(min(60vh, 520px) - 70px); /* room for the search input */
-}
-  #searchResults.show{display:block}
+
+  #searchResults{
+    display:none;
+    max-height: calc(min(72vh, 680px) - 82px);
+    overflow:auto;
+    padding: 2px 0;
+  }
+  #searchResults.show{ display:block; }
+
+  #searchResults::-webkit-scrollbar{ width:11px }
+  #searchResults::-webkit-scrollbar-thumb{
+    background: rgba(255,255,255,.16);
+    border-radius:999px;
+    border: 2px solid rgba(0,0,0,.35);
+  }
+  #searchResults::-webkit-scrollbar-track{ background: transparent; }
+
   .resItem{
-    display:flex; align-items:center; gap:10px;
-    padding:10px 12px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:12px 14px;
     border-top:1px solid rgba(255,255,255,.06);
     cursor:pointer;
+    transition: background .16s var(--ease), transform .16s var(--ease);
   }
-  #searchResults::-webkit-scrollbar{ width:10px }
-#searchResults::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:999px }
-#searchResults::-webkit-scrollbar-track{ background:transparent }
-}
-  .resItem:first-child{border-top:0}
-  .resItem:hover{background:rgba(255,255,255,.06)}
-  .resThumb{
-    width:38px; height:52px; border-radius:10px; object-fit:cover;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.10);
+  .resItem:hover{
+    background: rgba(255,255,255,.06);
+    transform: translateX(2px);
   }
-  .resText{min-width:0}
-  .resName{font-weight:900; font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .resMeta{color:var(--muted); font-size:.82rem}
 
-  /* ===== Hero ===== */
+  .resThumb{
+    width:54px; height:80px;
+    border-radius:18px;
+    object-fit:cover;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 12px 28px rgba(0,0,0,.24);
+    flex:0 0 auto;
+  }
+  .resText{ min-width:0; }
+  .resName{
+    font-weight:900;
+    font-size:1.04rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .resMeta{
+    margin-top:4px;
+    color:var(--muted);
+    font-size:.88rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* =========================================================
+     MAIN OFFSET
+     ========================================================= */
+  #browsePage, #seeAllPage{
+    margin-left: var(--railW);
+  }
+
+  /* =========================================================
+     HERO (Netflix vibe)
+     ========================================================= */
   .hero{
     position:relative;
-    min-height:64vh;
-    padding-top:82px;
+    min-height:74vh;
     display:flex;
     align-items:flex-end;
+    overflow:hidden;
   }
   .heroBg{
-    position:absolute; inset:0;
+    position:absolute;
+    inset:-2%;
     background:
-      linear-gradient(90deg, rgba(7,9,15,.92) 0%, rgba(7,9,15,.55) 45%, rgba(7,9,15,.20) 75%, rgba(7,9,15,.92) 100%),
-      linear-gradient(0deg, rgba(7,9,15,.98) 0%, rgba(7,9,15,.55) 28%, rgba(7,9,15,.15) 60%, rgba(7,9,15,.92) 100%),
+      linear-gradient(90deg, rgba(4,5,10,.98) 0%, rgba(4,5,10,.66) 46%, rgba(4,5,10,.20) 76%, rgba(4,5,10,.98) 100%),
+      linear-gradient(0deg, rgba(4,5,10,.98) 0%, rgba(4,5,10,.58) 28%, rgba(4,5,10,.14) 60%, rgba(4,5,10,.98) 100%),
       url('https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=1800&q=60');
     background-size:cover;
     background-position:center;
-    filter:saturate(1.05) contrast(1.05);
+    filter:saturate(1.10) contrast(1.07);
+    transform: scale(1.03);
   }
+  .heroBg::after{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      radial-gradient(920px 520px at 30% 35%, rgba(229,9,20,.14), transparent 60%),
+      radial-gradient(900px 520px at 70% 45%, rgba(59,130,246,.09), transparent 60%),
+      radial-gradient(900px 520px at 50% 100%, rgba(0,0,0,.55), transparent 60%);
+    pointer-events:none;
+  }
+
   .heroInner{
     position:relative;
-    width:min(1200px, 92vw);
+    width:min(1260px, 92vw);
     margin:0 auto;
-    padding:28px 0 26px 0;
+    padding: 64px 0 28px 0;
     display:grid;
-    grid-template-columns: 1.2fr .8fr;
-    gap:22px;
+    grid-template-columns: 1.28fr .72fr;
+    gap: 26px;
     align-items:end;
   }
-  .heroCard{max-width:720px}
+
+  .heroCard{
+    border-radius: 32px;
+    background:
+      radial-gradient(900px 420px at 12% 0%, rgba(229,9,20,.12), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+    padding: 22px 22px 18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .heroCard::before{
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(520px 260px at 18% 18%, rgba(255,255,255,.14), transparent 62%);
+    opacity:.55;
+    pointer-events:none;
+  }
+  .heroCard::after{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:32px;
+    padding:1px;
+    background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(229,9,20,.22), rgba(255,255,255,.10));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events:none;
+    opacity:.75;
+  }
+
   .heroTitle{
-    font-size: clamp(2rem, 4vw, 3.25rem);
-    font-weight:1000;
-    line-height:1.02;
     margin:0 0 10px 0;
-    letter-spacing:-.6px;
+    font-size: clamp(2.55rem, 4.4vw, 4.05rem);
+    font-weight: 900;
+    letter-spacing: -1.1px;
+    line-height: 1.02;
+    text-shadow: 0 20px 70px rgba(0,0,0,.62);
   }
   .heroDesc{
     margin:0;
-    color:rgba(238,242,255,.80);
-    font-size:1.02rem;
-    line-height:1.55;
-    max-width:62ch;
+    color: rgba(243,245,255,.88);
+    font-size: 1.06rem;
+    line-height: 1.7;
+    max-width: 74ch;
   }
+
   .heroMeta{
-    margin-top:10px;
-    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-    color:rgba(238,242,255,.72);
-    font-size:.9rem;
+    margin-top:14px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
   }
   .tag{
-    padding:6px 10px;
-    border-radius:999px;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.10);
+    padding:8px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.11);
+    color: rgba(243,245,255,.88);
+    font-size:.88rem;
+    box-shadow: 0 10px 22px rgba(0,0,0,.16);
   }
-  .heroActions{
-    margin-top:16px;
-    display:flex; gap:10px; flex-wrap:wrap;
+  .tag.hot{
+    background: rgba(229,9,20,.16);
+    border-color: rgba(229,9,20,.38);
+    box-shadow: 0 0 0 7px rgba(229,9,20,.12);
   }
-  .heroRight{display:flex; justify-content:flex-end}
-  .heroPoster{
-    width:min(340px, 52vw);
-    aspect-ratio: 2/3;
-    border-radius:22px;
-    border:1px solid rgba(255,255,255,.12);
-    box-shadow: var(--shadow);
-    overflow:hidden;
-    background:rgba(255,255,255,.06);
-  }
-  .heroPoster img{width:100%; height:100%; object-fit:cover; filter:saturate(1.05)}
 
-  /* ===== Browse page ===== */
-  #browsePage{display:block}
+  .heroActions{
+    margin-top:18px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .cta{
+    border:0;
+    cursor:pointer;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-weight: 900;
+    display:inline-flex;
+    gap:10px;
+    align-items:center;
+    transition: transform .18s var(--ease), filter .18s var(--ease), background .18s var(--ease), box-shadow .18s var(--ease);
+    user-select:none;
+    letter-spacing:.2px;
+  }
+  .cta:active{ transform: scale(.99); }
+  .cta.primary{
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color:white;
+    box-shadow: 0 20px 46px rgba(229,9,20,.24);
+  }
+  .cta.primary:hover{ filter: brightness(1.06); transform: translateY(-1px); }
+  .cta.ghost{
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    color: var(--text);
+  }
+  .cta.ghost:hover{
+    background: rgba(255,255,255,.10);
+    transform: translateY(-1px);
+    box-shadow: 0 18px 40px rgba(0,0,0,.22);
+  }
+  .cta:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+
+  .heroRight{
+    display:flex;
+    justify-content:flex-end;
+  }
+  .heroPoster{
+    width: min(360px, 54vw);
+    aspect-ratio: 2/3;
+    border-radius: 32px;
+    border:1px solid rgba(255,255,255,.12);
+    overflow:hidden;
+    box-shadow: var(--shadow);
+    background: rgba(255,255,255,.06);
+    position:relative;
+    transform: translateY(10px);
+  }
+  .heroPoster::before{
+    content:"";
+    position:absolute; inset:-30%;
+    background: radial-gradient(520px 320px at 30% 20%, rgba(255,255,255,.18), transparent 60%);
+    pointer-events:none;
+    filter: blur(1px);
+  }
+  .heroPoster::after{
+    content:"";
+    position:absolute; inset:0;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.25) 60%, rgba(0,0,0,.55) 100%);
+    pointer-events:none;
+  }
+  .heroPoster img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    filter:saturate(1.10) contrast(1.07);
+    transform: scale(1.02);
+  }
+
+  /* =========================================================
+     CONTENT / ROWS
+     ========================================================= */
   .content{
-    width:min(1200px, 92vw);
+    width:min(1260px, 92vw);
     margin:0 auto;
-    padding:18px 0 60px 0;
+    padding: 18px 0 72px;
   }
   .sectionHead{
-    display:flex; align-items:end; justify-content:space-between; gap:12px;
-    margin:16px 0 10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:end;
+    gap:12px;
+    margin: 18px 0 10px;
   }
   .sectionTitle{
     margin:0;
-    font-size:1.25rem;
-    font-weight:1000;
-    letter-spacing:.1px;
-  }
-  .sectionSub{color:var(--muted); font-size:.86rem}
-
-  .row{
+    font-size: 1.3rem;
+    font-weight: 900;
+    letter-spacing: .2px;
     position:relative;
+  }
+  .sectionTitle::after{
+    content:"";
+    display:block;
+    width: 72px;
+    height: 3px;
+    border-radius:999px;
+    margin-top:8px;
+    background: linear-gradient(90deg, rgba(229,9,20,.95), rgba(255,255,255,.10));
+    box-shadow: 0 0 0 7px rgba(229,9,20,.08);
+    opacity:.9;
+  }
+  .sectionSub{
+    margin-top:3px;
+    font-size: .86rem;
+    color: var(--muted);
+  }
+
+  .ghostBtn{
+    border-radius: 999px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06);
+    color: var(--text);
+    font-weight: 900;
+    cursor:pointer;
+    transition: transform .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease);
+  }
+  .ghostBtn:hover{
+    transform: translateY(-1px);
+    background: rgba(255,255,255,.10);
+    border-color: rgba(255,255,255,.18);
+    box-shadow: 0 18px 40px rgba(0,0,0,.20);
+  }
+  .ghostBtn:active{ transform: scale(.99); }
+
+  .rowWrap{ position:relative; }
+  .row{
     display:flex;
     gap:12px;
     overflow:auto;
-    padding:6px 2px 12px;
+    padding: 10px 2px 16px;
     scroll-snap-type:x mandatory;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,.25) transparent;
+    scrollbar-color: rgba(255,255,255,.22) transparent;
   }
   .row::-webkit-scrollbar{height:10px}
-  .row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:999px}
+  .row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px}
   .row::-webkit-scrollbar-track{background:transparent}
 
-  /* ===== Card base ===== */
+  .rowArrow{
+    position:absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width:46px; height:46px;
+    border-radius: 18px;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.38);
+    backdrop-filter: blur(12px);
+    cursor:pointer;
+    opacity:0;
+    transition: opacity .18s var(--ease), transform .18s var(--ease), background .18s var(--ease), box-shadow .18s var(--ease);
+    z-index:3;
+    box-shadow: 0 18px 40px rgba(0,0,0,.22);
+  }
+  .rowWrap:hover .rowArrow{ opacity:1; }
+  .rowArrow:hover{
+    background: rgba(0,0,0,.56);
+    transform: translateY(-50%) scale(1.03);
+    box-shadow: 0 0 0 7px rgba(229,9,20,.10), 0 18px 46px rgba(0,0,0,.30);
+  }
+  .rowArrow:active{ transform: translateY(-50%) scale(.99); }
+  .rowArrow.left{ left:-10px; }
+  .rowArrow.right{ right:-10px; }
+
+  /* =========================================================
+     CARDS (3D + premium hover)
+     ========================================================= */
   .card{
     flex:0 0 auto;
-    width:160px;
-    border-radius:18px;
-    background:rgba(255,255,255,.05);
+    width: var(--cardW);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
     border:1px solid rgba(255,255,255,.10);
     overflow:hidden;
-    cursor:pointer;
     scroll-snap-align:start;
-    transition: transform .14s ease, border-color .14s ease, background .14s ease;
+    cursor:pointer;
     position:relative;
+    box-shadow: 0 22px 52px rgba(0,0,0,.30);
+    transition: transform .20s var(--ease), border-color .20s var(--ease), filter .20s var(--ease), box-shadow .20s var(--ease);
+    transform: translateZ(0);
+  }
+  .card::before{
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(420px 300px at 20% 10%, rgba(255,255,255,.14), transparent 60%);
+    opacity:.0;
+    transition: opacity .20s var(--ease);
+    pointer-events:none;
+  }
+  .card::after{
+    content:"";
+    position:absolute; inset:0;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.12) 55%, rgba(0,0,0,.52) 100%);
+    opacity:.55;
+    pointer-events:none;
   }
   .card:hover{
-    transform: translateY(-3px) scale(1.02);
-    border-color: rgba(167,139,250,.35);
-    background:rgba(255,255,255,.07);
+    transform: translateY(-6px) scale(1.045);
+    border-color: rgba(229,9,20,.34);
+    filter: brightness(1.06);
+    box-shadow: 0 0 0 1px rgba(229,9,20,.18), 0 28px 78px rgba(0,0,0,.45);
   }
+  .card:hover::before{ opacity:1; }
+
   .poster{
     width:100%;
-    height:220px;
+    height: var(--cardH);
     object-fit:cover;
     display:block;
-    background:rgba(255,255,255,.05);
+    background: rgba(255,255,255,.06);
+    transform: scale(1.02);
+    transition: transform .20s var(--ease);
   }
-  .cardInfo{padding:10px 10px 12px}
+  .card:hover .poster{ transform: scale(1.06); }
+
+  .cardInfo{
+    padding: 12px 12px 14px;
+    position:relative;
+    z-index:2;
+  }
   .name{
-    font-weight:950;
-    font-size:.95rem;
+    font-weight: 900;
+    font-size: .98rem;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
   }
   .meta{
     margin-top:4px;
-    color:rgba(238,242,255,.70);
-    font-size:.82rem;
+    color: rgba(243,245,255,.72);
+    font-size: .82rem;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
   }
 
-  .favBtn{
-    position:absolute; top:10px; right:10px;
-    width:34px; height:34px;
-    border-radius:999px;
-    background:rgba(0,0,0,.35);
-    border:1px solid rgba(255,255,255,.14);
-    display:flex; align-items:center; justify-content:center;
-    font-weight:1000;
+  .playBadge{
+    position:absolute;
+    left:12px;
+    top:12px;
+    height:36px;
+    padding:0 12px;
+    border-radius: 999px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background: rgba(0,0,0,.52);
+    border: 1px solid rgba(255,255,255,.14);
+    backdrop-filter: blur(12px);
+    opacity:0;
+    transform: translateY(-8px);
+    transition: opacity .20s var(--ease), transform .20s var(--ease), box-shadow .20s var(--ease);
+    pointer-events:none;
+    font-weight:900;
+    font-size:.82rem;
+    z-index:3;
   }
-  .favBtn.on{color:#ffd166}
-  .favBtn.off{color:rgba(238,242,255,.70)}
-  .skeleton{
-    animation: pulse 1.1s ease-in-out infinite;
-    background:rgba(255,255,255,.06);
+  .card:hover .playBadge{
+    opacity:1;
+    transform: translateY(0);
+    box-shadow: 0 0 0 7px rgba(229,9,20,.10);
   }
-  @keyframes pulse{0%,100%{opacity:.65}50%{opacity:1}}
+  .playDot{
+    width:8px;height:8px;border-radius:999px;
+    background: var(--accent);
+    box-shadow: 0 0 0 7px rgba(229,9,20,.14);
+  }
 
-  /* ===== SEE ALL PAGE (new “different page”) ===== */
-  #seeAllPage{
-    display:none;
-    padding-top:82px; /* fixed header spacing */
+  .favBtn{
+    position:absolute;
+    top:12px; right:12px;
+    width:40px; height:40px;
+    border-radius: 999px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(0,0,0,.52);
+    border: 1px solid rgba(255,255,255,.14);
+    backdrop-filter: blur(12px);
+    font-weight: 900;
+    z-index:3;
+    transition: transform .18s var(--ease), box-shadow .18s var(--ease), filter .18s var(--ease);
   }
+  .favBtn:hover{
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(255,209,102,.10);
+  }
+  .favBtn.on{ color:#ffd166; }
+  .favBtn.off{ color:rgba(243,245,255,.75); }
+
+  /* Skeleton */
+  .skeleton{ animation: pulse 1.05s ease-in-out infinite; background: rgba(255,255,255,.06); }
+  @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+
+  /* =========================================================
+     SEE ALL PAGE
+     ========================================================= */
+  #seeAllPage{ display:none; padding-top:10px; }
   .seeAllWrap{
-    width:min(1400px, 94vw);
+    width:min(1440px, 94vw);
     margin:0 auto;
-    padding:16px 0 60px 0;
+    padding: 16px 0 74px;
   }
   .seeAllHead{
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
-    margin:8px 0 14px 0;
+    margin: 10px 0 16px;
   }
+  .seeAllLeft{ display:flex; flex-direction:column; }
   .seeAllTitle{
     margin:0;
-    font-size:1.2rem;
-    font-weight:1000;
+    font-size: 1.28rem;
+    font-weight: 900;
     letter-spacing:.2px;
   }
-  .seeAllSub{color:var(--muted); font-size:.86rem; margin-top:4px}
-  .seeAllLeft{display:flex; flex-direction:column}
+  .seeAllSub{ margin-top:6px; color: var(--muted); font-size:.90rem; }
 
-  /* 4 per row */
   .seeAllGrid{
     display:grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap:18px;
   }
-
-  /* Image size “3' x 5'” -> enforce 3:5 aspect ratio */
   #seeAllPage .card{
     width:100%;
-    border-radius:20px;
+    border-radius: 28px;
   }
   #seeAllPage .poster{
     height:auto;
-    aspect-ratio: 3 / 5; /* 3 by 5 */
-    object-fit:cover;
+    aspect-ratio: 3 / 5;
   }
-  #seeAllPage .cardInfo{padding:12px 12px 14px}
-  #seeAllPage .name{font-size:1rem}
-  #seeAllPage .meta{font-size:.85rem}
 
-  /* ===== Series Drawer ===== */
-  #drawer{display:none;position:fixed;inset:auto 0 0 0;background:rgba(10,12,18,.92);border-top:1px solid rgba(255,255,255,.10);max-height:68vh;overflow:auto;z-index:250;backdrop-filter:blur(10px)}
-  #drawerHead{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
-  #drawer h3{margin:0;font-weight:1000}
-  #drawerTools{display:flex;gap:8px;flex-wrap:wrap}
+  /* =========================================================
+     SERIES DRAWER
+     ========================================================= */
+  #drawer{
+    display:none;
+    position:fixed;
+    inset:auto 0 0 var(--railW);
+    background:
+      radial-gradient(900px 260px at 18% 0%, rgba(229,9,20,.12), transparent 60%),
+      rgba(10,12,18,.94);
+    border-top:1px solid rgba(255,255,255,.10);
+    max-height:72vh;
+    overflow:auto;
+    z-index:250;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 -22px 80px rgba(0,0,0,.62);
+  }
+  #drawerHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding: 12px 14px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    background:
+      radial-gradient(900px 260px at 20% 0%, rgba(229,9,20,.14), transparent 60%),
+      rgba(255,255,255,.03);
+    position:sticky;
+    top:0;
+    z-index:2;
+    backdrop-filter: blur(18px);
+  }
+  #drawer h3{ margin:0; font-weight: 900; }
+  #drawerTools{ display:flex; gap:8px; flex-wrap:wrap; }
+
   .btn{
     border-radius:999px;
-    padding:10px 12px;
-    font-weight:1000;
+    padding:10px 14px;
+    font-weight:900;
     border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.06);
-    color:var(--text);
+    background: rgba(255,255,255,.06);
+    color: var(--text);
+    cursor:pointer;
+    transition: transform .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease);
   }
-  .btn.primary{background:linear-gradient(135deg, var(--accent), #a78bfa); border:0}
-  #seasons{padding:12px 14px;display:grid;gap:10px}
+  .btn:hover{
+    transform: translateY(-1px);
+    background: rgba(255,255,255,.10);
+    border-color: rgba(255,255,255,.18);
+    box-shadow: 0 18px 44px rgba(0,0,0,.22);
+  }
+  .btn:active{ transform: scale(.99); }
+  .btn.primary{
+    border:0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 18px 40px rgba(229,9,20,.20);
+  }
+  .btn.primary:hover{ filter: brightness(1.06); }
+
+  #seasons{ padding: 12px 14px; display:grid; gap:10px; }
   details{
     border:1px solid rgba(255,255,255,.10);
-    border-radius:16px;
+    border-radius: 20px;
     overflow:hidden;
-    background:rgba(255,255,255,.04);
+    background: rgba(255,255,255,.04);
   }
   summary{
     cursor:pointer;
-    padding:12px 14px;
-    font-weight:1000;
-    background:rgba(255,255,255,.04);
+    padding: 12px 14px;
+    font-weight: 900;
+    background: rgba(255,255,255,.04);
+    user-select:none;
   }
-  .episodes{padding:10px 12px;display:grid;gap:10px}
+  .episodes{ padding: 10px 12px 12px; display:grid; gap:10px; }
   .ep{
     display:grid;
     grid-template-columns: 1fr auto auto;
     gap:10px;
     align-items:center;
-    padding:10px 10px;
-    border-radius:14px;
+    padding: 10px 10px;
+    border-radius: 18px;
     border:1px solid rgba(255,255,255,.10);
-    background:rgba(0,0,0,.20);
+    background: rgba(0,0,0,.22);
   }
-  .ep .epName{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:900}
+  .epName{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-weight: 900;
+  }
   a.linkBtn{
     text-decoration:none;
     display:inline-flex;
     align-items:center;
     justify-content:center;
     border-radius:999px;
-    padding:10px 12px;
-    font-weight:1000;
+    padding:10px 14px;
+    font-weight:900;
     color:white;
-    background:linear-gradient(135deg, var(--accent), #a78bfa);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 16px 34px rgba(229,9,20,.18);
   }
 
-  /* Mobile */
-  @media (max-width:980px){
-    .seeAllGrid{grid-template-columns: repeat(2, minmax(0, 1fr))}
+  /* =========================================================
+     RESPONSIVE
+     ========================================================= */
+  @media (max-width: 980px){
+    :root{ --railW: 86px; --cardW:160px; --cardH:238px; }
+    .seeAllGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .heroPoster{ width:min(320px, 56vw); }
   }
-  @media (max-width:760px){
-    .heroInner{grid-template-columns:1fr; padding:22px 0 18px 0}
-    .heroRight{justify-content:flex-start}
-    .heroPoster{width:min(280px, 72vw)}
-    input{min-width:120px}
-    .card{width:145px}
-    .poster{height:205px}
-    .seeAllGrid{grid-template-columns: repeat(2, minmax(0, 1fr))}
+  @media (max-width: 760px){
+    .heroInner{ grid-template-columns: 1fr; padding: 46px 0 22px; }
+    .heroRight{ justify-content:flex-start; }
+    .heroPoster{ width:min(310px, 76vw); }
+    #searchWrap{ width: calc(100vw - var(--railW) - 36px); }
   }
 </style>
 </head>
@@ -466,37 +996,102 @@
 <body>
 
 <header id="hdr">
-  <div class="topbar">
-    <div class="brand"><span class="dot"></span><span>HAMZAWYTV</span></div>
-
-    <div class="pill">
-      <input id="username" placeholder="Username" autocomplete="username" value="ba24d3f" />
-    </div>
-    <div class="pill">
-      <input id="password" type="password" placeholder="Password" autocomplete="current-password" value="36a7e66d5d" />
-
+  <div class="rail">
+    <div class="brand">
+      <div class="brandMark" aria-hidden="true"></div>
+      <div class="brandText">HAMZAWYTV</div>
     </div>
 
-    <button id="connect" class="primary">Connect</button>
+    <!-- Prefilled credentials -->
+    <div class="credBox">
+      <div class="pill">
+        <input id="username" placeholder="Username" autocomplete="username" value="ba24d3f" />
+      </div>
+      <div class="pill">
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" value="36a7e66d5d" />
+      </div>
+    </div>
 
-    <button id="liveBtn" class="ghost" disabled>TV</button>
-    <button id="moviesBtn" class="ghost" disabled>Movies</button>
-    <button id="seriesBtn" class="ghost" disabled>Series</button>
+    <button id="connect" class="railBtn primary" title="Connect">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path d="M12 15v-3m0 0V9m0 3h3m-3 0H9" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <path d="M7 7.5a5 5 0 0 1 10 0V10h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h1V7.5Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="lbl">Connect</span>
+    </button>
+
+    <button id="liveBtn" class="railBtn" disabled title="TV">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="lbl">TV</span>
+    </button>
+
+    <button id="moviesBtn" class="railBtn" disabled title="Movies">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path d="M4 7h16v10H4V7Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 7l2 10M14 7l2 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="lbl">Movies</span>
+    </button>
+
+    <button id="seriesBtn" class="railBtn" disabled title="Series">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path d="M6 7h12M6 12h12M6 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="lbl">Series</span>
+    </button>
 
     <div class="spacer"></div>
 
-    <button id="toggleSearch" class="ghost" disabled>Search</button>
-    <button id="logout" class="ghost">Logout</button>
+    <button id="toggleSearch" class="railBtn" disabled title="Search">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="currentColor" stroke-width="2"/>
+          <path d="m21 21-4.2-4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="lbl">Search</span>
+    </button>
+
+    <button id="logout" class="railBtn" title="Logout">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path d="M10 7V6a2 2 0 0 1 2-2h7v16h-7a2 2 0 0 1-2-2v-1" stroke="currentColor" stroke-width="2"/>
+          <path d="M13 12H4m0 0 3-3M4 12l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="lbl">Logout</span>
+    </button>
 
     <div id="status"><span class="statusPill">Not connected</span></div>
-  </div>
 
-  <div id="searchWrap">
-    <div class="searchBar">
-      <input id="search" placeholder="Type 3+ letters to search loaded rows…" />
-      <span class="kbd">Esc</span>
+    <!-- Search overlay -->
+    <div id="searchWrap">
+      <div class="searchShell">
+        <div class="searchBar">
+          <div class="searchIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+              <path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="white" stroke-width="2"/>
+              <path d="m21 21-4.2-4.2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <input id="search" placeholder="Type 3+ letters to search (auto-loads categories)..." />
+          <span class="kbd">Esc</span>
+        </div>
+        <div id="searchResults"></div>
+      </div>
     </div>
-    <div id="searchResults"></div>
+
   </div>
 </header>
 
@@ -513,20 +1108,37 @@
         </p>
 
         <div class="heroMeta" id="heroMeta">
-          <span class="tag">Hero</span>
-          <span class="tag">Rows</span>
-          <span class="tag">Smooth</span>
+          <span class="tag hot">STARTV</span>
+          <span class="tag">Cinematic UI</span>
+          <span class="tag">Fast Browse</span>
         </div>
 
         <div class="heroActions" id="heroActions">
-          <button class="primary" id="heroPlay" disabled>Play / Open</button>
-          <button class="ghost" id="heroFav" disabled>★ Favorite</button>
+          <button class="cta primary" id="heroPlay" disabled>
+            <span class="ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                <path d="M8 5v14l11-7-11-7Z" fill="white"/>
+              </svg>
+            </span>
+            Play / Open
+          </button>
+
+          <button class="cta ghost" id="heroFav" disabled>
+            <span class="ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                <path d="M12 17.3l-6.2 3.7 1.7-7.1L2 9.2l7.3-.6L12 2l2.7 6.6 7.3.6-5.5 4.7 1.7 7.1L12 17.3Z"
+                  stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            ★ Favorite
+          </button>
         </div>
       </div>
 
       <div class="heroRight">
         <div class="heroPoster">
-          <img id="heroPoster" alt="Poster" src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=60" />
+          <img id="heroPoster" alt="Poster"
+               src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=60" />
         </div>
       </div>
     </div>
@@ -537,7 +1149,7 @@
   </section>
 </div>
 
-<!-- SEE ALL PAGE (different page view) -->
+<!-- SEE ALL PAGE -->
 <div id="seeAllPage">
   <div class="seeAllWrap">
     <div class="seeAllHead">
@@ -545,9 +1157,7 @@
         <h2 class="seeAllTitle" id="seeAllTitle">Category</h2>
         <div class="seeAllSub" id="seeAllSub">Showing all items</div>
       </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <button id="seeAllBack" class="ghost">Back</button>
-      </div>
+      <button id="seeAllBack" class="ghostBtn">Back</button>
     </div>
 
     <div class="seeAllGrid" id="seeAllGrid"></div>
@@ -650,9 +1260,8 @@ const S = {
   categories:[],
   catRowLoaded: new Set(),
   catCache: new Map(),
-  index: [],
-  indexKeys: new Set(),
-  catIndexed: new Set(),
+  index: [],                  // search index across cached categories
+  indexCats: new Set(),       // categories already indexed (avoid duplicates)
 
   hero: { kind:'', item:null, catId:'' },
 
@@ -663,7 +1272,7 @@ const S = {
 const ROW_PREVIEW_COUNT = 14;
 const SEARCH_LIMIT = 12;
 
-/* ===== Only show |EN| and |AR| categories (movies + series ONLY) ===== */
+/* ===== Only show |EN| and |AR| categories (Movies/Series only) ===== */
 function isAllowedCategoryName(name){
   const n = String(name || '').toUpperCase();
   return n.includes('|EN|') || n.includes('|AR|');
@@ -740,92 +1349,73 @@ document.addEventListener('click', (e)=>{
 });
 $('search').addEventListener('blur', ()=> setTimeout(closeSearchIfEmpty, 150));
 
-/* =========================
-   SEARCH IMPROVEMENTS (keeps UI + behavior)
-   ========================= */
-function normalizeText(s){
-  let t = String(s || '').toLowerCase();
-  try { t = t.normalize('NFKD'); } catch {}
-  t = t.replace(/[\u0300-\u036f]/g,'');               // remove latin accents
-  t = t.replace(/[^a-z0-9\u0600-\u06FF\s]/g,' ');    // keep arabic + latin + numbers
-  t = t.replace(/\s+/g,' ').trim();
-  return t;
-}
-function getItemName(item){
-  return item?.name || item?.title || item?.stream_display_name || '';
-}
-function getItemIdForKind(kind, item){
-  if (!item) return '';
-  if (kind === 'series') return String(item.series_id || '');
-  return String(item.stream_id || item.id || '');
-}
-function addToIndex(kind, catId, item){
-  const id = getItemIdForKind(kind, item);
-  if (!id) return;
-  const key = `${kind}|${id}`;
-  if (S.indexKeys.has(key)) return;
-
-  const rawName = getItemName(item);
-  const nameNorm = normalizeText(rawName);
-  if (!nameNorm) return;
-
-  S.indexKeys.add(key);
-  S.index.push({
-    nameLc: nameNorm,   // keep your existing field name
-    kind,
-    catId,
-    item,
-    poster: getPoster(kind, item),
-    meta: getMeta(kind, item)
-  });
-}
-function catKey(catId){ return `${S.kind}|${catId}`; }
-function indexCategoryItems(catId, items){
-  if (!Array.isArray(items)) return;
-  items.forEach(it => addToIndex(S.kind, catId, it));
-  S.catIndexed.add(catKey(catId));
-}
-function findHits(qNorm){
-  return S.index
-    .filter(x => x.kind === S.kind && x.nameLc.includes(qNorm))
-    .slice(0, SEARCH_LIMIT);
-}
-
-let searchTimer = null;
+/* ===== Search improvement: auto-fetch categories until results appear ===== */
 let searchToken = 0;
 
-function renderSearching(msg){
-  $('searchResults').classList.add('show');
-  $('searchResults').innerHTML = `
-    <div class="resItem">
-      <div class="resText">
-        <div class="resName">${escapeHtml(msg)}</div>
-        <div class="resMeta">Searching across categories…</div>
-      </div>
-    </div>
-  `;
+async function ensureIndexForCategory(catId){
+  const key = `${S.kind}|${catId}`;
+  if (S.indexCats.has(key)) return;
+  S.indexCats.add(key);
+
+  const items = await fetchCategoryItems(catId);
+  for (const item of items){
+    const nm = (item.name||'').toLowerCase();
+    if (!nm) continue;
+    S.index.push({
+      nameLc: nm,
+      kind: S.kind,
+      catId,
+      item,
+      poster: getPoster(S.kind, item),
+      meta: getMeta(S.kind, item)
+    });
+  }
 }
-function renderNoMatches(){
-  $('searchResults').classList.add('show');
-  $('searchResults').innerHTML = `
-    <div class="resItem">
-      <div class="resText">
-        <div class="resName">No matches found</div>
-        <div class="resMeta">Tip: keep typing, or load more categories then search again.</div>
-      </div>
-    </div>
-  `;
+
+async function fillIndexUntilHits(q, token){
+  const MAX_CATS_TO_FETCH = 18;
+  let fetched = 0;
+
+  for (const c of S.categories){
+    if (token !== searchToken) return;
+    const catId = String(c.category_id);
+
+    const key = `${S.kind}|${catId}`;
+    if (!S.indexCats.has(key)){
+      try{
+        await ensureIndexForCategory(catId);
+        fetched++;
+      }catch{}
+    }
+
+    const hitsNow = S.index.filter(x => x.kind === S.kind && x.nameLc.includes(q)).length;
+    if (hitsNow >= SEARCH_LIMIT) return;
+    if (fetched >= MAX_CATS_TO_FETCH) return;
+  }
 }
-function renderHits(list){
+
+function renderSearchHits(hits){
+  if (!hits.length){
+    $('searchResults').classList.add('show');
+    $('searchResults').innerHTML = `
+      <div class="resItem">
+        <div class="resText">
+          <div class="resName">No results found</div>
+          <div class="resMeta">Try another keyword, or switch Movies/Series.</div>
+        </div>
+      </div>`;
+    return;
+  }
+
   $('searchResults').classList.add('show');
   $('searchResults').innerHTML = '';
-  list.forEach(h=>{
+  hits.forEach(h=>{
     const div = document.createElement('div');
     div.className = 'resItem';
     div.innerHTML = `
       <img class="resThumb" src="${h.poster || placeholderImg}" onerror="this.src='${placeholderImg}'" />
       <div class="resText">
-        <div class="resName">${escapeHtml(getItemName(h.item) || 'Item')}</div>
+        <div class="resName">${escapeHtml(h.item.name || 'Item')}</div>
         <div class="resMeta">${escapeHtml(h.meta || '')}</div>
       </div>
     `;
@@ -836,19 +1426,13 @@ function renderHits(list){
         $('searchResults').classList.remove('show');
         return;
       }
-
       const rowId = `row-${S.kind}-${h.catId}`;
       const el = document.getElementById(rowId);
       if (el){
         el.scrollIntoView({behavior:'smooth', block:'center'});
         el.animate([{filter:'brightness(1.0)'},{filter:'brightness(1.25)'},{filter:'brightness(1.0)'}],{duration:600});
       }
-
-      // ensure row visually loads
-      loadCategoryRow(h.catId).catch(()=>{});
-
       setHero(S.kind, h.item, h.catId);
-
       $('searchWrap').classList.remove('open');
       $('searchResults').classList.remove('show');
     };
@@ -856,61 +1440,40 @@ function renderHits(list){
   });
 }
 
-async function runSearch(){
-  const raw = ($('search').value||'').trim();
-  const qNorm = normalizeText(raw);
+$('search').addEventListener('input', async ()=>{
+  const q = ($('search').value||'').trim().toLowerCase();
+  const token = ++searchToken;
 
-  if (qNorm.length < 3){
+  if (q.length < 3){
     $('searchResults').classList.remove('show');
     $('searchResults').innerHTML = '';
     return;
   }
 
-  const token = ++searchToken;
+  let hits = S.index
+    .filter(x => x.kind === S.kind && x.nameLc.includes(q))
+    .slice(0, SEARCH_LIMIT);
 
-  // Fast: search already indexed
-  let hits = findHits(qNorm);
-  if (hits.length){
-    renderHits(hits);
-    return;
-  }
-
-  // Scan more categories to make search actually work
-  renderSearching('Searching…');
-
-  const catIds = S.categories.map(c => String(c.category_id));
-  const SCAN_LIMIT = (S.kind === 'live') ? 10 : 25;
-  let scanned = 0;
-
-  for (const cid of catIds){
+  if (!hits.length && (S.kind === 'vod' || S.kind === 'series')){
+    $('searchResults').classList.add('show');
+    $('searchResults').innerHTML = `
+      <div class="resItem">
+        <div class="resText">
+          <div class="resName">Searching…</div>
+          <div class="resMeta">Loading more categories to find matches…</div>
+        </div>
+      </div>`;
+    try{
+      await fillIndexUntilHits(q, token);
+    }catch{}
     if (token !== searchToken) return;
 
-    const k = `${S.kind}|${cid}`;
-    if (S.catIndexed.has(k)) continue;
-
-    renderSearching(`Searching… (${scanned + 1})`);
-
-    try{
-      const items = await fetchCategoryItems(cid);
-      indexCategoryItems(cid, items);
-    }catch(e){ /* ignore */ }
-
-    hits = findHits(qNorm);
-    if (hits.length) break;
-
-    scanned++;
-    if (scanned >= SCAN_LIMIT) break;
+    hits = S.index
+      .filter(x => x.kind === S.kind && x.nameLc.includes(q))
+      .slice(0, SEARCH_LIMIT);
   }
 
-  if (token !== searchToken) return;
-
-  if (!hits.length) renderNoMatches();
-  else renderHits(hits);
-}
-
-$('search').addEventListener('input', ()=>{
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(()=> runSearch().catch(()=>{}), 220);
+  renderSearchHits(hits);
 });
 
 /* ---------------- Login ---------------- */
@@ -926,6 +1489,8 @@ $('connect').onclick = async ()=>{
 
     if (data.user_info && String(data.user_info.auth) === '1'){
       S.loggedIn = true;
+      document.body.classList.add('loggedIn');
+
       $('liveBtn').disabled = false;
       $('moviesBtn').disabled = false;
       $('seriesBtn').disabled = false;
@@ -940,15 +1505,28 @@ $('connect').onclick = async ()=>{
       showBrowsePage(true);
     } else {
       S.loggedIn = false;
+      document.body.classList.remove('loggedIn');
       setStatus('Invalid login','err');
     }
   }catch(e){
     console.error(e);
     S.loggedIn = false;
+    document.body.classList.remove('loggedIn');
     setStatus('Cannot connect (API). Check host or proxy.','err');
   }
 };
+
 $('logout').onclick = ()=> location.reload();
+
+function setActiveNav(kind){
+  $('liveBtn').classList.remove('navActive');
+  $('moviesBtn').classList.remove('navActive');
+  $('seriesBtn').classList.remove('navActive');
+
+  if (kind === 'live') $('liveBtn').classList.add('navActive');
+  if (kind === 'vod') $('moviesBtn').classList.add('navActive');
+  if (kind === 'series') $('seriesBtn').classList.add('navActive');
+}
 
 $('liveBtn').onclick  = ()=> loadKind('live');
 $('moviesBtn').onclick= ()=> loadKind('vod');
@@ -972,12 +1550,12 @@ function setHero(kind, item, catId){
   $('heroPoster').onerror = ()=> $('heroPoster').src = placeholderImg;
 
   $('heroBg').style.backgroundImage =
-    `linear-gradient(90deg, rgba(7,9,15,.92) 0%, rgba(7,9,15,.55) 45%, rgba(7,9,15,.20) 75%, rgba(7,9,15,.92) 100%),
-     linear-gradient(0deg, rgba(7,9,15,.98) 0%, rgba(7,9,15,.55) 28%, rgba(7,9,15,.15) 60%, rgba(7,9,15,.92) 100%),
+    `linear-gradient(90deg, rgba(4,5,10,.98) 0%, rgba(4,5,10,.66) 46%, rgba(4,5,10,.20) 76%, rgba(4,5,10,.98) 100%),
+     linear-gradient(0deg, rgba(4,5,10,.98) 0%, rgba(4,5,10,.58) 28%, rgba(4,5,10,.14) 60%, rgba(4,5,10,.98) 100%),
      url('${poster}')`;
 
   $('heroMeta').innerHTML = `
-    <span class="tag">${kind==='live'?'TV':kind==='vod'?'Movies':'Series'}</span>
+    <span class="tag hot">${kind==='live'?'TV':kind==='vod'?'Movies':'Series'}</span>
     <span class="tag">${catId ? `Category ${catId}` : '—'}</span>
   `;
 
@@ -986,10 +1564,10 @@ function setHero(kind, item, catId){
   if (kind === 'series'){
     $('heroFav').disabled = false;
     const isFav = !!store.favSeries[String(item.series_id)];
-    $('heroFav').textContent = isFav ? '★ Favorited' : '★ Favorite';
+    $('heroFav').innerHTML = isFav ? '★ Favorited' : '★ Favorite';
   } else {
     $('heroFav').disabled = true;
-    $('heroFav').textContent = '★ Favorite';
+    $('heroFav').innerHTML = '★ Favorite';
   }
 }
 
@@ -1015,12 +1593,14 @@ $('heroFav').onclick = ()=>{
   const fakeBtn = { classList:{ add(){}, remove(){} }, textContent:'' };
   toggleFavSeries(item, fakeBtn);
   const isFav = !!store.favSeries[String(item.series_id)];
-  $('heroFav').textContent = isFav ? '★ Favorited' : '★ Favorite';
+  $('heroFav').innerHTML = isFav ? '★ Favorited' : '★ Favorite';
 };
 
 /* ---------------- Load kind -> build rows ---------------- */
 async function loadKind(kind){
   if (!S.loggedIn) return setStatus('Login first','err');
+
+  setActiveNav(kind);
 
   closeDrawer();
   $('search').value = '';
@@ -1035,8 +1615,7 @@ async function loadKind(kind){
   S.catRowLoaded.clear();
   S.catCache.clear();
   S.index = [];
-  S.indexKeys = new Set();
-  S.catIndexed = new Set();
+  S.indexCats.clear();
 
   $('rows').innerHTML = '';
 
@@ -1060,10 +1639,11 @@ async function loadKind(kind){
     const cats = await fetchJsonRobust(url);
     const allCats = Array.isArray(cats) ? cats : [];
 
-    // ✅ TV shows ALL categories
-    // ✅ Movies/Series keep ONLY |EN| and |AR|
-    if (kind === 'live') S.categories = allCats;
-    else S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name));
+    if (kind === 'live'){
+      S.categories = allCats; // TV: show all
+    } else {
+      S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name)); // Movies/Series: EN/AR only
+    }
 
     if (!S.categories.length){
       $('rows').innerHTML = `<p style="color:var(--muted)">No categories found.</p>`;
@@ -1086,16 +1666,35 @@ async function loadKind(kind){
             <h2 class="sectionTitle">${escapeHtml(catName)}</h2>
             <div class="sectionSub">${kind==='live'?'Channels':'Titles'} load when this row becomes visible</div>
           </div>
-          <button class="ghost" data-seeall="${catId}">See all</button>
+          <button class="ghostBtn" data-seeall="${catId}">See all</button>
         </div>
-        <div class="row" id="slider-${kind}-${catId}">
-          ${skeletonCards(10)}
+
+        <div class="rowWrap">
+          <div class="rowArrow left" data-left="${catId}" title="Scroll left">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <path d="M15 6l-6 6 6 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+
+          <div class="row" id="slider-${kind}-${catId}">
+            ${skeletonCards(10)}
+          </div>
+
+          <div class="rowArrow right" data-right="${catId}" title="Scroll right">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <path d="M9 6l6 6-6 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
         </div>
       `;
 
       $('rows').appendChild(sec);
 
       sec.querySelector('[data-seeall]').onclick = ()=> openCategoryPage(catId, catName, true);
+
+      const rowEl = sec.querySelector(`#slider-${kind}-${catId}`);
+      sec.querySelector(`[data-left="${catId}"]`).onclick = ()=> rowEl.scrollBy({left: -Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
+      sec.querySelector(`[data-right="${catId}"]`).onclick = ()=> rowEl.scrollBy({left:  Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
     });
 
     setupLazyLoading();
@@ -1131,6 +1730,8 @@ function setupLazyLoading(){
   document.querySelectorAll('section[data-cat-id]').forEach(sec=> rowObserver.observe(sec));
 }
 
+function catKey(catId){ return `${S.kind}|${catId}`; }
+
 async function loadCategoryRow(catId){
   const key = catKey(catId);
   if (S.catRowLoaded.has(key)) return;
@@ -1142,15 +1743,22 @@ async function loadCategoryRow(catId){
 
   try{
     const items = await fetchCategoryItems(catId);
-
-    // ✅ index FULL category for search (no UI change)
-    indexCategoryItems(catId, items);
-
     const preview = items.slice(0, ROW_PREVIEW_COUNT);
 
     slider.innerHTML = '';
     preview.forEach(item=>{
       slider.appendChild(makeCard(item, catId));
+      const nm = (item.name||'').toLowerCase();
+      if (nm){
+        S.index.push({
+          nameLc: nm,
+          kind: S.kind,
+          catId,
+          item,
+          poster: getPoster(S.kind, item),
+          meta: getMeta(S.kind, item)
+        });
+      }
     });
 
     if (!preview.length){
@@ -1198,10 +1806,6 @@ async function openCategoryPage(catId, catName, pushState=true){
 
   try{
     const items = await fetchCategoryItems(catId);
-
-    // ✅ index FULL category for search
-    indexCategoryItems(catId, items);
-
     grid.innerHTML = '';
 
     if (!items.length){
@@ -1247,6 +1851,7 @@ function makeCard(item, catId){
   const meta = getMeta(S.kind, item);
 
   div.innerHTML = `
+    <div class="playBadge"><span class="playDot"></span>Play</div>
     <img class="poster" src="${poster}" onerror="this.src='${placeholderImg}'" />
     <div class="cardInfo">
       <div class="name">${escapeHtml(name)}</div>
@@ -1265,7 +1870,7 @@ function makeCard(item, catId){
       e.stopPropagation();
       toggleFavSeries(item, fav);
       if (S.hero.kind==='series' && S.hero.item && String(S.hero.item.series_id) === id){
-        $('heroFav').textContent = (!!store.favSeries[id]) ? '★ Favorited' : '★ Favorite';
+        $('heroFav').innerHTML = (!!store.favSeries[id]) ? '★ Favorited' : '★ Favorite';
       }
     };
     div.appendChild(fav);
@@ -1306,8 +1911,8 @@ function skeletonCards(n){
       <div class="card">
         <div class="poster skeleton"></div>
         <div class="cardInfo">
-          <div class="name skeleton" style="height:14px;border-radius:8px"></div>
-          <div class="meta skeleton" style="height:12px;border-radius:8px;margin-top:8px;width:70%"></div>
+          <div class="name skeleton" style="height:14px;border-radius:10px"></div>
+          <div class="meta skeleton" style="height:12px;border-radius:10px;margin-top:8px;width:70%"></div>
         </div>
       </div>
     `;
