@@ -131,11 +131,13 @@
     padding:0 14px;
     border-top:1px solid rgba(255,255,255,.06);
   }
-  #searchWrap.open{
-    max-height:120px;
-    padding:10px 14px 14px 14px;
-    transform: translateY(0);
-  }
+  /* ===== Search slide-down (bigger dropdown) ===== */
+#searchWrap.open{
+  /* was: max-height:120px; */
+  max-height: min(60vh, 520px);   /* taller dropdown */
+  padding:10px 14px 14px 14px;
+  transform: translateY(0);
+}
   .searchBar{
     width:min(980px, 100%);
     background:rgba(0,0,0,.35);
@@ -153,14 +155,15 @@
     border-radius:10px;
     padding:4px 8px;
   }
-  #searchResults{
-    margin-top:10px;
-    display:none;
-    background:rgba(0,0,0,.35);
-    border:1px solid rgba(255,255,255,.10);
-    border-radius:var(--radius);
-    overflow:hidden;
-  }
+ #searchResults{
+  margin-top:10px;
+  display:none;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:var(--radius);
+  overflow:auto;                  /* was: hidden */
+  max-height: calc(min(60vh, 520px) - 70px); /* room for the search input */
+}
   #searchResults.show{display:block}
   .resItem{
     display:flex; align-items:center; gap:10px;
@@ -168,6 +171,10 @@
     border-top:1px solid rgba(255,255,255,.06);
     cursor:pointer;
   }
+  #searchResults::-webkit-scrollbar{ width:10px }
+#searchResults::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:999px }
+#searchResults::-webkit-scrollbar-track{ background:transparent }
+}
   .resItem:first-child{border-top:0}
   .resItem:hover{background:rgba(255,255,255,.06)}
   .resThumb{
@@ -463,10 +470,11 @@
     <div class="brand"><span class="dot"></span><span>IPTV</span></div>
 
     <div class="pill">
-      <input id="username" placeholder="Username" autocomplete="username" />
+      <input id="username" placeholder="Username" autocomplete="username" value="ba24d3f" />
     </div>
     <div class="pill">
-      <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password" value="36a7e66d5d" />
+
     </div>
 
     <button id="connect" class="primary">Connect</button>
@@ -643,6 +651,8 @@ const S = {
   catRowLoaded: new Set(),
   catCache: new Map(),
   index: [],
+  indexKeys: new Set(),
+  catIndexed: new Set(),
 
   hero: { kind:'', item:null, catId:'' },
 
@@ -653,7 +663,7 @@ const S = {
 const ROW_PREVIEW_COUNT = 14;
 const SEARCH_LIMIT = 12;
 
-/* ===== Only show |EN| and |AR| categories ===== */
+/* ===== Only show |EN| and |AR| categories (movies + series ONLY) ===== */
 function isAllowedCategoryName(name){
   const n = String(name || '').toUpperCase();
   return n.includes('|EN|') || n.includes('|AR|');
@@ -672,7 +682,6 @@ function showBrowsePage(push=false){
   $('seeAllPage').style.display = 'none';
   $('browsePage').style.display = 'block';
   if (push) history.pushState({page:'browse'}, '', '#browse');
-  // keep scroll position as-is
 }
 function showSeeAllPage(catId, catName, push=false){
   S.seeAll.open = true;
@@ -696,7 +705,6 @@ window.addEventListener('popstate', (e)=>{
 });
 
 $('seeAllBack').onclick = ()=>{
-  // go back like a real page
   if (history.length > 1) history.back();
   else showBrowsePage(true);
 };
@@ -732,55 +740,177 @@ document.addEventListener('click', (e)=>{
 });
 $('search').addEventListener('blur', ()=> setTimeout(closeSearchIfEmpty, 150));
 
-$('search').addEventListener('input', ()=>{
-  const q = ($('search').value||'').trim().toLowerCase();
-  if (q.length < 3){
-    $('searchResults').classList.remove('show');
-    $('searchResults').innerHTML = '';
-    return;
-  }
-  const hits = S.index
-    .filter(x => x.nameLc.includes(q) && x.kind === S.kind)
+/* =========================
+   SEARCH IMPROVEMENTS (keeps UI + behavior)
+   ========================= */
+function normalizeText(s){
+  let t = String(s || '').toLowerCase();
+  try { t = t.normalize('NFKD'); } catch {}
+  t = t.replace(/[\u0300-\u036f]/g,'');               // remove latin accents
+  t = t.replace(/[^a-z0-9\u0600-\u06FF\s]/g,' ');    // keep arabic + latin + numbers
+  t = t.replace(/\s+/g,' ').trim();
+  return t;
+}
+function getItemName(item){
+  return item?.name || item?.title || item?.stream_display_name || '';
+}
+function getItemIdForKind(kind, item){
+  if (!item) return '';
+  if (kind === 'series') return String(item.series_id || '');
+  return String(item.stream_id || item.id || '');
+}
+function addToIndex(kind, catId, item){
+  const id = getItemIdForKind(kind, item);
+  if (!id) return;
+  const key = `${kind}|${id}`;
+  if (S.indexKeys.has(key)) return;
+
+  const rawName = getItemName(item);
+  const nameNorm = normalizeText(rawName);
+  if (!nameNorm) return;
+
+  S.indexKeys.add(key);
+  S.index.push({
+    nameLc: nameNorm,   // keep your existing field name
+    kind,
+    catId,
+    item,
+    poster: getPoster(kind, item),
+    meta: getMeta(kind, item)
+  });
+}
+function catKey(catId){ return `${S.kind}|${catId}`; }
+function indexCategoryItems(catId, items){
+  if (!Array.isArray(items)) return;
+  items.forEach(it => addToIndex(S.kind, catId, it));
+  S.catIndexed.add(catKey(catId));
+}
+function findHits(qNorm){
+  return S.index
+    .filter(x => x.kind === S.kind && x.nameLc.includes(qNorm))
     .slice(0, SEARCH_LIMIT);
+}
 
-  if (!hits.length){
-    $('searchResults').classList.add('show');
-    $('searchResults').innerHTML = `<div class="resItem"><div class="resText"><div class="resName">No matches (loaded rows)</div><div class="resMeta">Scroll more to load more rows, then search again.</div></div></div>`;
-    return;
-  }
+let searchTimer = null;
+let searchToken = 0;
 
+function renderSearching(msg){
+  $('searchResults').classList.add('show');
+  $('searchResults').innerHTML = `
+    <div class="resItem">
+      <div class="resText">
+        <div class="resName">${escapeHtml(msg)}</div>
+        <div class="resMeta">Searching across categories…</div>
+      </div>
+    </div>
+  `;
+}
+function renderNoMatches(){
+  $('searchResults').classList.add('show');
+  $('searchResults').innerHTML = `
+    <div class="resItem">
+      <div class="resText">
+        <div class="resName">No matches found</div>
+        <div class="resMeta">Tip: keep typing, or load more categories then search again.</div>
+      </div>
+    </div>
+  `;
+}
+function renderHits(list){
   $('searchResults').classList.add('show');
   $('searchResults').innerHTML = '';
-  hits.forEach(h=>{
+  list.forEach(h=>{
     const div = document.createElement('div');
     div.className = 'resItem';
     div.innerHTML = `
       <img class="resThumb" src="${h.poster || placeholderImg}" onerror="this.src='${placeholderImg}'" />
       <div class="resText">
-        <div class="resName">${escapeHtml(h.item.name || 'Item')}</div>
+        <div class="resName">${escapeHtml(getItemName(h.item) || 'Item')}</div>
         <div class="resMeta">${escapeHtml(h.meta || '')}</div>
       </div>
     `;
     div.onclick = ()=>{
-      // if we are currently in see-all page, just update hero + open
       if (S.seeAll.open){
         setHero(S.kind, h.item, h.catId);
         $('searchWrap').classList.remove('open');
         $('searchResults').classList.remove('show');
         return;
       }
+
       const rowId = `row-${S.kind}-${h.catId}`;
       const el = document.getElementById(rowId);
       if (el){
         el.scrollIntoView({behavior:'smooth', block:'center'});
         el.animate([{filter:'brightness(1.0)'},{filter:'brightness(1.25)'},{filter:'brightness(1.0)'}],{duration:600});
       }
+
+      // ensure row visually loads
+      loadCategoryRow(h.catId).catch(()=>{});
+
       setHero(S.kind, h.item, h.catId);
+
       $('searchWrap').classList.remove('open');
       $('searchResults').classList.remove('show');
     };
     $('searchResults').appendChild(div);
   });
+}
+
+async function runSearch(){
+  const raw = ($('search').value||'').trim();
+  const qNorm = normalizeText(raw);
+
+  if (qNorm.length < 3){
+    $('searchResults').classList.remove('show');
+    $('searchResults').innerHTML = '';
+    return;
+  }
+
+  const token = ++searchToken;
+
+  // Fast: search already indexed
+  let hits = findHits(qNorm);
+  if (hits.length){
+    renderHits(hits);
+    return;
+  }
+
+  // Scan more categories to make search actually work
+  renderSearching('Searching…');
+
+  const catIds = S.categories.map(c => String(c.category_id));
+  const SCAN_LIMIT = (S.kind === 'live') ? 10 : 25;
+  let scanned = 0;
+
+  for (const cid of catIds){
+    if (token !== searchToken) return;
+
+    const k = `${S.kind}|${cid}`;
+    if (S.catIndexed.has(k)) continue;
+
+    renderSearching(`Searching… (${scanned + 1})`);
+
+    try{
+      const items = await fetchCategoryItems(cid);
+      indexCategoryItems(cid, items);
+    }catch(e){ /* ignore */ }
+
+    hits = findHits(qNorm);
+    if (hits.length) break;
+
+    scanned++;
+    if (scanned >= SCAN_LIMIT) break;
+  }
+
+  if (token !== searchToken) return;
+
+  if (!hits.length) renderNoMatches();
+  else renderHits(hits);
+}
+
+$('search').addEventListener('input', ()=>{
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(()=> runSearch().catch(()=>{}), 220);
 });
 
 /* ---------------- Login ---------------- */
@@ -905,6 +1035,8 @@ async function loadKind(kind){
   S.catRowLoaded.clear();
   S.catCache.clear();
   S.index = [];
+  S.indexKeys = new Set();
+  S.catIndexed = new Set();
 
   $('rows').innerHTML = '';
 
@@ -928,18 +1060,14 @@ async function loadKind(kind){
     const cats = await fetchJsonRobust(url);
     const allCats = Array.isArray(cats) ? cats : [];
 
-    // ✅ TV: show ALL categories
-    // ✅ Movies + Series: ONLY |EN| and |AR|
-    S.categories = (kind === 'live')
-      ? allCats
-      : allCats.filter(c => isAllowedCategoryName(c.category_name));
+    // ✅ TV shows ALL categories
+    // ✅ Movies/Series keep ONLY |EN| and |AR|
+    if (kind === 'live') S.categories = allCats;
+    else S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name));
 
     if (!S.categories.length){
-      const msg = (kind === 'live')
-        ? 'No TV categories found.'
-        : 'No |EN| or |AR| categories found.';
-      $('rows').innerHTML = `<p style="color:var(--muted)">${msg}</p>`;
-      setStatus((kind === 'live') ? 'No TV categories' : 'No EN/AR categories','err');
+      $('rows').innerHTML = `<p style="color:var(--muted)">No categories found.</p>`;
+      setStatus('No categories','err');
       return;
     }
 
@@ -967,7 +1095,6 @@ async function loadKind(kind){
 
       $('rows').appendChild(sec);
 
-      // ✅ Now opens “different page” (not modal)
       sec.querySelector('[data-seeall]').onclick = ()=> openCategoryPage(catId, catName, true);
     });
 
@@ -1004,8 +1131,6 @@ function setupLazyLoading(){
   document.querySelectorAll('section[data-cat-id]').forEach(sec=> rowObserver.observe(sec));
 }
 
-function catKey(catId){ return `${S.kind}|${catId}`; }
-
 async function loadCategoryRow(catId){
   const key = catKey(catId);
   if (S.catRowLoaded.has(key)) return;
@@ -1017,22 +1142,15 @@ async function loadCategoryRow(catId){
 
   try{
     const items = await fetchCategoryItems(catId);
+
+    // ✅ index FULL category for search (no UI change)
+    indexCategoryItems(catId, items);
+
     const preview = items.slice(0, ROW_PREVIEW_COUNT);
 
     slider.innerHTML = '';
     preview.forEach(item=>{
       slider.appendChild(makeCard(item, catId));
-      const nm = (item.name||'').toLowerCase();
-      if (nm){
-        S.index.push({
-          nameLc: nm,
-          kind: S.kind,
-          catId,
-          item,
-          poster: getPoster(S.kind, item),
-          meta: getMeta(S.kind, item)
-        });
-      }
     });
 
     if (!preview.length){
@@ -1080,6 +1198,10 @@ async function openCategoryPage(catId, catName, pushState=true){
 
   try{
     const items = await fetchCategoryItems(catId);
+
+    // ✅ index FULL category for search
+    indexCategoryItems(catId, items);
+
     grid.innerHTML = '';
 
     if (!items.length){
@@ -1150,7 +1272,6 @@ function makeCard(item, catId){
   }
 
   div.addEventListener('mouseenter', ()=>{
-    // if in browse page, hero exists; if in seeAll page, keep hero update too (harmless)
     if ($('browsePage').style.display !== 'none'){
       setHero(S.kind, item, catId);
       $('heroPlay').disabled = false;
@@ -1158,7 +1279,6 @@ function makeCard(item, catId){
   });
 
   div.onclick = ()=>{
-    // keep the same behavior as before: click opens stream/movie/series
     if ($('browsePage').style.display !== 'none'){
       setHero(S.kind, item, catId);
       $('heroPlay').disabled = false;
