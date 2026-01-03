@@ -1476,6 +1476,30 @@ $('search').addEventListener('input', async ()=>{
   renderSearchHits(hits);
 });
 
+/* =========================
+   ENTER KEY => CONNECT (NEW)
+   - Does NOT change hover functionality
+   - Just triggers the same Connect click when Enter is pressed
+   ========================= */
+function isEnterKey(e){
+  return e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter' || e.keyCode === 13;
+}
+function tryConnectOnEnter(e){
+  // Only before login; after login Enter should NOT trigger connect.
+  if (S.loggedIn) return;
+  if (!isEnterKey(e)) return;
+
+  // Trigger only when focused on username/password/connect (safe + predictable)
+  const ae = document.activeElement;
+  const onLoginFields = (ae === $('username') || ae === $('password') || ae === $('connect'));
+  if (!onLoginFields) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  if ($('connect') && !$('connect').disabled) $('connect').click();
+}
+
 /* ---------------- Login ---------------- */
 $('connect').onclick = async ()=>{
   S.user = $('username').value.trim();
@@ -1515,6 +1539,11 @@ $('connect').onclick = async ()=>{
     setStatus('Cannot connect (API). Check host or proxy.','err');
   }
 };
+
+/* Attach Enter listeners (NEW) */
+$('username').addEventListener('keydown', tryConnectOnEnter);
+$('password').addEventListener('keydown', tryConnectOnEnter);
+$('connect').addEventListener('keydown', tryConnectOnEnter);
 
 $('logout').onclick = ()=> location.reload();
 
