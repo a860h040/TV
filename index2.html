@@ -928,12 +928,18 @@ async function loadKind(kind){
     const cats = await fetchJsonRobust(url);
     const allCats = Array.isArray(cats) ? cats : [];
 
-    // ONLY |EN| and |AR|
-    S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name));
+    // ✅ TV: show ALL categories
+    // ✅ Movies + Series: ONLY |EN| and |AR|
+    S.categories = (kind === 'live')
+      ? allCats
+      : allCats.filter(c => isAllowedCategoryName(c.category_name));
 
     if (!S.categories.length){
-      $('rows').innerHTML = `<p style="color:var(--muted)">No |EN| or |AR| categories found.</p>`;
-      setStatus('No EN/AR categories','err');
+      const msg = (kind === 'live')
+        ? 'No TV categories found.'
+        : 'No |EN| or |AR| categories found.';
+      $('rows').innerHTML = `<p style="color:var(--muted)">${msg}</p>`;
+      setStatus((kind === 'live') ? 'No TV categories' : 'No EN/AR categories','err');
       return;
     }
 
