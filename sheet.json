@@ -1,0 +1,39 @@
+{
+  "updated": "2026-01-04",
+  "items": [
+    {
+      "id": "sintel",
+      "type": "movie",
+      "title": "Sintel (Open Movie)",
+      "year": "2010",
+      "genres": ["Animation", "Adventure"],
+      "quality": "1080p",
+      "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Sintel_poster.jpg/640px-Sintel_poster.jpg",
+      "description": "Open licensed short film.",
+      "src": "https://download.blender.org/durian/trailer/sintel_trailer-1080p.mp4",
+      "hero": true
+    },
+    {
+      "id": "demo-series",
+      "type": "series",
+      "title": "Demo Series",
+      "year": "2026",
+      "genres": ["Drama"],
+      "quality": "HD",
+      "poster": "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=900&q=60",
+      "description": "Example series structure. Replace with your episode URLs.",
+      "episodes": [
+        {
+          "title": "Episode 1 — Pilot",
+          "note": "25m",
+          "src": "https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4"
+        },
+        {
+          "title": "Episode 2 — The Turn",
+          "note": "28m",
+          "src": "https://download.blender.org/durian/trailer/tears_of_steel_720p.mov"
+        }
+      ]
+    }
+  ]
+}
