@@ -101,6 +101,113 @@
   }
 
   /* =========================================================
+     LOGIN PAGE (NEW) — centered username/password page
+     ========================================================= */
+  body:not(.loggedIn) header,
+  body:not(.loggedIn) #browsePage,
+  body:not(.loggedIn) #seeAllPage,
+  body:not(.loggedIn) #drawer{
+    display:none;
+  }
+
+  #loginPage{
+    position:fixed;
+    inset:0;
+    z-index:500;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  body.loggedIn #loginPage{ display:none; }
+
+  .loginCard{
+    width:min(560px, 92vw);
+    border-radius: 34px;
+    background:
+      radial-gradient(900px 420px at 12% 0%, rgba(229,9,20,.14), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+    padding: 26px 22px 20px;
+    position:relative;
+    overflow:hidden;
+    text-align:center;
+  }
+  .loginCard::before{
+    content:"";
+    position:absolute; inset:0;
+    background: radial-gradient(520px 260px at 18% 18%, rgba(255,255,255,.14), transparent 62%);
+    opacity:.55;
+    pointer-events:none;
+  }
+  .loginCard::after{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:34px;
+    padding:1px;
+    background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(229,9,20,.22), rgba(255,255,255,.10));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events:none;
+    opacity:.75;
+  }
+  .loginTop{
+    position:relative;
+    z-index:2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    margin-bottom: 12px;
+    user-select:none;
+  }
+  .loginSub{
+    position:relative;
+    z-index:2;
+    margin: 0 0 14px 0;
+    color: rgba(243,245,255,.80);
+    font-size: .95rem;
+    line-height: 1.5;
+  }
+
+  /* reuse your existing pill styles, but make it look great centered */
+  .loginCred{
+    position:relative;
+    z-index:2;
+    width:min(420px, 92vw);
+    margin: 0 auto 14px;
+    display:grid;
+    gap:10px;
+  }
+  .loginBtn{
+    position:relative;
+    z-index:2;
+    width:min(420px, 92vw);
+    margin: 0 auto;
+    height:56px;
+    border-radius: 22px;
+  }
+  #loginStatus{
+    position:relative;
+    z-index:2;
+    width:min(420px, 92vw);
+    margin: 14px auto 0;
+    text-align:center;
+    font-size:.72rem;
+    color:var(--muted);
+  }
+  .loginHint{
+    position:relative;
+    z-index:2;
+    margin-top:10px;
+    color: rgba(243,245,255,.55);
+    font-size: .80rem;
+  }
+
+  /* =========================================================
      LEFT RAIL
      ========================================================= */
   header{
@@ -282,9 +389,6 @@
   .ok{ color:#22c55e; }
   .err{ color:#ef4444; }
   .warn{ color:#fbbf24; }
-
-  body.loggedIn .credBox,
-  body.loggedIn #connect{ display:none; }
 
   /* =========================================================
      SEARCH OVERLAY (BIGGER + PREMIUM)
@@ -1003,32 +1107,45 @@
 
 <body>
 
-<header id="hdr">
-  <div class="rail">
-    <div class="brand">
+<!-- LOGIN PAGE (NEW) -->
+<div id="loginPage">
+  <div class="loginCard">
+    <div class="loginTop">
       <div class="brandMark" aria-hidden="true"></div>
       <div class="brandText">HAMZAWYTV</div>
     </div>
+    <p class="loginSub">Enter credentials (or keep the prefilled ones) and press <b>Connect</b>.</p>
 
-    <!-- Prefilled credentials -->
-    <div class="credBox">
+    <div class="loginCred">
       <div class="pill">
         <input id="username" placeholder="Username" autocomplete="username" value="ba24d3f" />
       </div>
       <div class="pill">
-        <input id="password" type="password" placeholder="Password" autocomplete="current-password" value="36a7e66d5d" />
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" value="36a7e66d5d43" />
       </div>
     </div>
 
-    <button id="connect" class="railBtn primary" title="Connect">
+    <button id="connect" class="railBtn primary loginBtn" title="Connect">
       <span class="ic" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
           <path d="M12 15v-3m0 0V9m0 3h3m-3 0H9" stroke="white" stroke-width="2" stroke-linecap="round"/>
           <path d="M7 7.5a5 5 0 0 1 10 0V10h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h1V7.5Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
         </svg>
       </span>
-      <span class="lbl">Connect</span>
+      Connect
     </button>
+
+    <div id="loginStatus"><span class="statusPill">Not connected</span></div>
+    <div class="loginHint">Remote: Arrows to move • OK/Enter to select • Back to exit dialogs</div>
+  </div>
+</div>
+
+<header id="hdr">
+  <div class="rail">
+    <div class="brand">
+      <div class="brandMark" aria-hidden="true"></div>
+      <div class="brandText">HAMZAWYTV</div>
+    </div>
 
     <button id="liveBtn" class="railBtn" disabled title="TV">
       <span class="ic" aria-hidden="true">
@@ -1201,7 +1318,9 @@ const placeholderImg = 'https://via.placeholder.com/300x450?text=No+Image';
 
 function setStatus(msg, kind){
   const cls = kind === 'ok' ? 'ok' : kind === 'err' ? 'err' : 'warn';
-  $('status').innerHTML = `<span class="statusPill ${cls}">${msg}</span>`;
+  const html = `<span class="statusPill ${cls}">${msg}</span>`;
+  if ($('status')) $('status').innerHTML = html;
+  if ($('loginStatus')) $('loginStatus').innerHTML = html;
 }
 
 function pickJsonText(text){
@@ -1322,6 +1441,7 @@ function isVisibleEl(el){
 }
 
 function activeScope(){
+  if (!S.loggedIn) return $('loginPage');
   if ($('searchWrap').classList.contains('open')) return $('searchWrap');
   if ($('drawer').style.display !== 'none') return $('drawer');
   if ($('seeAllPage').style.display !== 'none') return $('seeAllPage');
@@ -1372,7 +1492,6 @@ function nextByDirection(dir){
   if (!items.length) return null;
 
   if (!cur || !items.includes(cur)){
-    // pick something reasonable
     const pick = items.find(x=> x.id === 'connect') || items[0];
     return pick;
   }
@@ -1388,7 +1507,6 @@ function nextByDirection(dir){
     const dx = p.x - c.x;
     const dy = p.y - c.y;
 
-    // must be in direction
     if (dir === 'ArrowLeft'  && dx >= -4) continue;
     if (dir === 'ArrowRight' && dx <=  4) continue;
     if (dir === 'ArrowUp'    && dy >= -4) continue;
@@ -1398,7 +1516,6 @@ function nextByDirection(dir){
     const secondary = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dy) : Math.abs(dx);
     const dist = Math.hypot(dx, dy);
 
-    // weight: prioritize forward movement, then alignment, then distance
     const score = primary*1.0 + secondary*0.28 + dist*0.02;
 
     if (score < bestScore){
@@ -1418,7 +1535,8 @@ function closeSearchHard(){
 }
 
 function handleBack(){
-  // Samsung/Tizen/Old browsers can use different codes; we handle many
+  if (!S.loggedIn) return false;
+
   if ($('searchWrap').classList.contains('open')){
     closeSearchHard();
     tvFocus($('toggleSearch'));
@@ -1440,7 +1558,6 @@ function handleBack(){
 function handleOk(){
   const el = document.activeElement;
 
-  // If not logged in, OK/Enter should connect (from username/password/connect)
   if (!S.loggedIn){
     if (el === $('username') || el === $('password') || el === $('connect')){
       doConnect();
@@ -1448,7 +1565,6 @@ function handleOk(){
     }
   }
 
-  // Default: click focused element
   if (el && typeof el.click === 'function'){
     el.click();
   }
@@ -1458,17 +1574,16 @@ document.addEventListener('keydown', (e)=>{
   const key = e.key;
   const code = e.keyCode || e.which;
 
-  // Back keys (many Samsung TVs)
   const isBack =
     key === 'Escape' ||
     key === 'Backspace' ||
     key === 'BrowserBack' ||
     key === 'GoBack' ||
     key === 'Return' ||
-    code === 10009 ||   // Samsung/Tizen "Return"
-    code === 461  ||    // some TV remotes "Back"
-    code === 27   ||    // ESC
-    code === 8;         // Backspace
+    code === 10009 ||
+    code === 461  ||
+    code === 27   ||
+    code === 8;
 
   if (isBack){
     const handled = handleBack();
@@ -1479,7 +1594,6 @@ document.addEventListener('keydown', (e)=>{
     return;
   }
 
-  // OK / Enter
   if (key === 'Enter' || code === 13){
     e.preventDefault();
     e.stopPropagation();
@@ -1487,7 +1601,6 @@ document.addEventListener('keydown', (e)=>{
     return;
   }
 
-  // Arrow navigation
   const isArrow =
     key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown' ||
     code === 37 || code === 38 || code === 39 || code === 40;
@@ -1497,8 +1610,7 @@ document.addEventListener('keydown', (e)=>{
       (key && key.startsWith('Arrow')) ? key :
       (code === 37 ? 'ArrowLeft' : code === 38 ? 'ArrowUp' : code === 39 ? 'ArrowRight' : 'ArrowDown');
 
-    // Special: when search input is focused, ArrowDown jumps into results if available
-    if ($('searchWrap').classList.contains('open') && document.activeElement === $('search') && dir === 'ArrowDown'){
+    if (S.loggedIn && $('searchWrap').classList.contains('open') && document.activeElement === $('search') && dir === 'ArrowDown'){
       const firstRes = $('searchResults').querySelector('.resItem[tabindex="0"]');
       if (firstRes){
         e.preventDefault();
@@ -1571,6 +1683,7 @@ $('toggleSearch').onclick = ()=>{
   else openSearch();
 };
 document.addEventListener('click', (e)=>{
+  if (!S.loggedIn) return;
   const inside = $('searchWrap').contains(e.target) || $('toggleSearch').contains(e.target);
   if (!inside) closeSearchIfEmpty();
 });
@@ -1631,7 +1744,6 @@ function renderSearchHits(hits){
           <div class="resMeta">Try another keyword, or switch Movies/Series.</div>
         </div>
       </div>`;
-    // make it TV-focusable
     const x = $('searchResults').querySelector('.resItem');
     if (x){
       x.addEventListener('focus', ()=>{ clearTvFocus(); x.classList.add('tv-focus'); });
@@ -1673,7 +1785,6 @@ function renderSearchHits(hits){
       setHero(S.kind, h.item, h.catId);
       $('searchWrap').classList.remove('open');
       $('searchResults').classList.remove('show');
-      // focus hero play for TV remote
       setTimeout(()=> tvFocus($('heroPlay')), 60);
     };
 
@@ -1682,7 +1793,6 @@ function renderSearchHits(hits){
         e.preventDefault();
         div.click();
       }
-      // ArrowUp from first result returns to search input
       if ((e.key === 'ArrowUp' || (e.keyCode||e.which) === 38) && div === $('searchResults').firstElementChild){
         e.preventDefault();
         tvFocus($('search'));
@@ -1778,7 +1888,6 @@ async function doConnect(){
       $('rows').innerHTML = '';
       showBrowsePage(true);
 
-      // TV focus to Movies button by default
       setTimeout(()=> tvFocus($('moviesBtn')), 60);
     } else {
       S.loggedIn = false;
@@ -1800,7 +1909,6 @@ async function doConnect(){
 $('connect').onclick = doConnect;
 $('logout').onclick = ()=> location.reload();
 
-// Auto connect when password entry finishes (works for TV on-screen keyboards too)
 $('password').addEventListener('input', scheduleAutoConnect);
 $('password').addEventListener('change', scheduleAutoConnect);
 $('password').addEventListener('blur', scheduleAutoConnect);
@@ -1931,9 +2039,9 @@ async function loadKind(kind){
     const allCats = Array.isArray(cats) ? cats : [];
 
     if (kind === 'live'){
-      S.categories = allCats; // TV: show all
+      S.categories = allCats;
     } else {
-      S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name)); // Movies/Series: EN/AR only
+      S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name));
     }
 
     if (!S.categories.length){
@@ -1990,7 +2098,6 @@ async function loadKind(kind){
       leftBtn.onclick = ()=> rowEl.scrollBy({left: -Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
       rightBtn.onclick = ()=> rowEl.scrollBy({left:  Math.min(rowEl.clientWidth*0.9, 900), behavior:'smooth'});
 
-      // TV focus styling for arrows
       [leftBtn, rightBtn].forEach(btn=>{
         btn.addEventListener('focus', ()=>{ clearTvFocus(); btn.classList.add('tv-focus'); });
         btn.addEventListener('blur', ()=> btn.classList.remove('tv-focus'));
@@ -2011,7 +2118,6 @@ async function loadKind(kind){
       firstTwo.forEach(id=> loadCategoryRow(id).catch(()=>{}));
     }, 120);
 
-    // Focus first row for TV
     setTimeout(()=>{
       const firstCard = document.querySelector('#rows .card[tabindex="0"]');
       if (firstCard) tvFocus(firstCard);
@@ -2129,7 +2235,6 @@ async function openCategoryPage(catId, catName, pushState=true){
       grid.appendChild(makeCard(item, catId));
     });
 
-    // TV focus first card in grid
     setTimeout(()=>{
       const first = grid.querySelector('.card[tabindex="0"]');
       if (first) tvFocus(first);
@@ -2385,7 +2490,6 @@ async function openSeries(serie){
     const first = $('seasons').querySelector('details');
     if (first) first.open = true;
 
-    // TV focus first summary in drawer
     setTimeout(()=>{
       const firstSum = $('seasons').querySelector('summary');
       if (firstSum) tvFocus(firstSum);
@@ -2437,7 +2541,7 @@ function downloadText(txt, filename){
 /* ===== Default route ===== */
 history.replaceState({page:'browse'}, '', '#browse');
 
-// initial TV focus (login screen)
+/* initial TV focus (login screen) */
 setTimeout(()=> tvFocus($('password').value ? $('password') : $('username')), 120);
 </script>
 
