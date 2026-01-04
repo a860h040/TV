@@ -1,221 +1,164 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>STARTV — Player</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>STARTV — Sheet Player</title>
   <style>
-    html,body{height:100%;margin:0;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-    video{width:100%;height:100%;background:#000}
-    #hud{
-      position:fixed;left:14px;right:14px;top:14px;
-      display:flex;gap:10px;align-items:center;justify-content:space-between;
-      padding:10px 12px;border-radius:14px;
-      background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);
-      backdrop-filter: blur(10px);
-      z-index:10;
-    }
-    #title{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78vw}
-    #msg{opacity:.8;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78vw}
-    .btn{
-      border:0;cursor:pointer;border-radius:999px;padding:10px 14px;
-      font-weight:800;color:#fff;background:rgba(255,255,255,.14);
-      border:1px solid rgba(255,255,255,.18);
-    }
-    .btn:active{transform:scale(.99)}
+    body{margin:0;background:#04050a;color:#f3f5ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button{background:#e50914;border:0;color:white;padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
+    button:focus{outline:3px solid rgba(255,255,255,.35)}
+    .muted{color:rgba(243,245,255,.65)}
+    .panel{margin-top:14px;background:rgba(14,16,24,.62);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px}
+    video{width:100%;max-height:62vh;background:black;border-radius:14px}
+    ul{list-style:none;padding:0;margin:10px 0 0}
+    li{padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.10);margin:8px 0;background:rgba(0,0,0,.25)}
+    li:focus{outline:3px solid rgba(255,255,255,.30)}
+    .title{font-weight:800}
+    .url{font-size:12px;word-break:break-all}
   </style>
 </head>
 <body>
-  <div id="hud">
-    <div style="min-width:0">
-      <div id="title">Loading…</div>
-      <div id="msg">Tip: OK/Enter Play/Pause • ←/→ Seek • Back returns</div>
+  <div class="wrap">
+    <h1 style="margin:0 0 8px">STARTV — Sheet Player</h1>
+    <div class="row">
+      <button id="btnLatest">Play Latest</button>
+      <button id="btnList">Load Recent</button>
+      <span id="status" class="muted"></span>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-      <button class="btn" id="toggle">Play/Pause</button>
-      <button class="btn" id="openExternal">Open External</button>
-      <button class="btn" id="back">Back</button>
+
+    <div class="panel">
+      <div class="muted" id="nowPlaying">Nothing playing.</div>
+      <div style="height:10px"></div>
+      <video id="v" controls playsinline></video>
+    </div>
+
+    <div class="panel">
+      <div class="title">Recent links</div>
+      <div class="muted" style="margin-top:6px">Use ↑/↓ then Enter to play (TV remote friendly).</div>
+      <ul id="list"></ul>
     </div>
   </div>
 
-  <div id="wrap">
-    <video id="v" controls playsinline></video>
-  </div>
+<script>
+  // ✅ paste your Apps Script /exec URL here
+  const API = "https://script.google.com/macros/s/AKfycbxdl0itrBq4SL5icNezBPx_EoiMkAn6AC6PdkgaUf_ECLj_eshVCU9HH6QSHXkM0FU2/exec";
 
-  <!-- HLS support for .m3u8 when TV browser doesn't support it natively -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
-  <script>
-    const SHEET_READ_URL = "./sheet.json";           // same GitHub Pages folder
-    const PAGE1_URL = "./index.html";                // your page 1 file name
-    const LS_KEY = "startv_last_selection";
+  const $ = (id)=>document.getElementById(id);
+  const statusEl = $("status");
+  const listEl = $("list");
+  const videoEl = $("v");
+  const nowEl = $("nowPlaying");
 
-    const $ = (id)=>document.getElementById(id);
-    const v = $("v");
+  function setStatus(msg){ statusEl.textContent = msg || ""; }
 
-    function setHud(title, msg){
-      $("title").textContent = title || "";
-      $("msg").textContent = msg || "";
-    }
-
-    function getQuerySelection(){
-      const sp = new URLSearchParams(location.search);
-      const url = sp.get("url");
-      if (!url) return null;
-      return {
-        url,
-        title: sp.get("title") || "",
-        poster: sp.get("poster") || "",
-        ts: Date.now()
-      };
-    }
-
-    function loadFromLocal(){
-      try{
-        const raw = localStorage.getItem(LS_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
-      }catch{ return null; }
-    }
-
-    async function loadFromSheet(){
-      const r = await fetch(SHEET_READ_URL + "?v=" + Date.now(), { cache:"no-store" });
-      if (!r.ok) throw new Error("sheet fetch failed");
-      const j = await r.json();
-      if (!j || !j.url) return null;
-      return j;
-    }
-
-    async function loadSelection(){
-      // 1) If URL params exist, prefer them
-      const fromQuery = getQuerySelection();
-      if (fromQuery){
-        try{ localStorage.setItem(LS_KEY, JSON.stringify(fromQuery)); }catch{}
-        return fromQuery;
+  // JSONP helper (avoids CORS issues)
+  function jsonp(params){
+    return new Promise((resolve,reject)=>{
+      const cb = "cb_" + Math.random().toString(36).slice(2);
+      const url = API + "?" + new URLSearchParams({ ...params, callback: cb, _: Date.now() }).toString();
+      const s = document.createElement("script");
+      window[cb] = (data)=>{ cleanup(); resolve(data); };
+      s.onerror = ()=>{ cleanup(); reject(new Error("JSONP failed")); };
+      function cleanup(){
+        try{ delete window[cb]; }catch(e){ window[cb]=undefined; }
+        s.remove();
       }
-
-      // 2) Try GitHub sheet.json
-      try{
-        const fromSheet = await loadFromSheet();
-        if (fromSheet){
-          try{ localStorage.setItem(LS_KEY, JSON.stringify(fromSheet)); }catch{}
-          return fromSheet;
-        }
-      }catch{}
-
-      // 3) Fallback: localStorage (same device)
-      return loadFromLocal();
-    }
-
-    function isM3U8(url){ return /\.m3u8(\?|$)/i.test(url || ""); }
-    function isMKV(url){ return /\.mkv(\?|$)/i.test(url || ""); }
-
-    let hls = null;
-
-    async function playUrl(url, title, poster){
-      if (!url){
-        setHud("No link found", "Go back to Page 1 and select a TV/Movie/Episode.");
-        return;
-      }
-
-      setHud(title || "Playing…", url);
-
-      // Poster optional
-      if (poster) v.setAttribute("poster", poster);
-      else v.removeAttribute("poster");
-
-      // Reset old
-      try{ v.pause(); }catch{}
-      v.removeAttribute("src");
-      v.load();
-      if (hls){ try{ hls.destroy(); }catch{} hls = null; }
-
-      // Warn about MKV (often not supported in browsers)
-      if (isMKV(url)){
-        setHud(title || "MKV selected", "MKV may not play in TV browser. Try Open External if it fails.");
-      }
-
-      // HLS .m3u8 handling
-      if (isM3U8(url)){
-        if (v.canPlayType("application/vnd.apple.mpegurl")){
-          v.src = url;
-        } else if (window.Hls && Hls.isSupported()){
-          hls = new Hls({ maxBufferLength: 30 });
-          hls.loadSource(url);
-          hls.attachMedia(v);
-        } else {
-          setHud(title || "Cannot play HLS", "This TV browser cannot play .m3u8 here. Use Open External.");
-          return;
-        }
-      } else {
-        // mp4/webm/etc
-        v.src = url;
-      }
-
-      // Try autoplay
-      try{
-        await v.play();
-        setHud(title || "Playing…", "OK/Enter Play/Pause • ←/→ Seek 10s • Back returns");
-      }catch{
-        setHud(title || "Ready", "Press OK/Enter to Play • ←/→ Seek • Back returns");
-      }
-    }
-
-    function goBack(){
-      location.href = PAGE1_URL + "#browse";
-    }
-
-    $("back").onclick = goBack;
-    $("openExternal").onclick = ()=>{
-      const sel = loadFromLocal();
-      if (sel?.url) window.open(sel.url, "_blank", "noopener");
-    };
-    $("toggle").onclick = ()=>{
-      if (v.paused) v.play().catch(()=>{});
-      else v.pause();
-    };
-
-    // Remote keys
-    document.addEventListener("keydown", (e)=>{
-      const k = e.key;
-      const code = e.keyCode || e.which;
-
-      const isBack =
-        k === "Escape" || k === "Backspace" || k === "BrowserBack" || k === "GoBack" || k === "Return" ||
-        code === 10009 || code === 461 || code === 27 || code === 8;
-
-      if (isBack){
-        e.preventDefault(); e.stopPropagation();
-        goBack();
-        return;
-      }
-
-      if (k === "Enter" || code === 13){
-        e.preventDefault(); e.stopPropagation();
-        $("toggle").click();
-        return;
-      }
-
-      if (k === "ArrowLeft" || code === 37){
-        e.preventDefault(); e.stopPropagation();
-        try{ v.currentTime = Math.max(0, (v.currentTime||0) - 10); }catch{}
-        return;
-      }
-
-      if (k === "ArrowRight" || code === 39){
-        e.preventDefault(); e.stopPropagation();
-        try{ v.currentTime = Math.min((v.duration||Infinity), (v.currentTime||0) + 10); }catch{}
-        return;
-      }
+      s.src = url;
+      document.body.appendChild(s);
     });
+  }
 
-    // Boot
-    (async ()=>{
-      const sel = await loadSelection();
-      try{ localStorage.setItem(LS_KEY, JSON.stringify(sel||{})); }catch{}
-      await playUrl(sel?.url, sel?.title, sel?.poster);
-    })();
-  </script>
+  function tryPlay(url){
+    if(!url) return;
+
+    nowEl.textContent = "Now playing: " + url;
+    setStatus("");
+
+    // VLC-style links (vlc://...) usually cannot be played by HTML5 video.
+    // We will try: if it fails, we show a message.
+    videoEl.pause();
+    videoEl.removeAttribute("src");
+    videoEl.load();
+
+    videoEl.src = url;
+
+    const p = videoEl.play();
+    if (p && p.catch) {
+      p.catch(()=>{
+        setStatus("This device/browser can’t play this format/link. Try mp4/m3u8 or use a compatible player.");
+      });
+    }
+  }
+
+  function renderList(items){
+    listEl.innerHTML = "";
+    (items || []).forEach((it, idx)=>{
+      const li = document.createElement("li");
+      li.tabIndex = 0;
+      li.dataset.url = it.url;
+      li.innerHTML = `
+        <div class="title">${escapeHtml(it.title || "(No title)")}</div>
+        <div class="muted">${escapeHtml(it.ts || "")}</div>
+        <div class="url muted">${escapeHtml(it.url || "")}</div>
+      `;
+      li.addEventListener("click", ()=> tryPlay(it.url));
+      li.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter" || e.key === "OK"){ tryPlay(it.url); }
+      });
+      listEl.appendChild(li);
+      if(idx === 0) li.focus();
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  async function playLatest(){
+    setStatus("Loading latest…");
+    const res = await jsonp({ action: "latest" });
+    if(!res || !res.ok || !res.item || !res.item.url){
+      setStatus("No links found in sheet yet.");
+      return;
+    }
+    setStatus("Playing latest ✅");
+    tryPlay(res.item.url);
+  }
+
+  async function loadRecent(){
+    setStatus("Loading recent…");
+    const res = await jsonp({ action: "list", limit: "25" });
+    if(!res || !res.ok){
+      setStatus("Failed to load list.");
+      return;
+    }
+    setStatus("Loaded ✅");
+    renderList(res.items || []);
+  }
+
+  $("btnLatest").onclick = playLatest;
+  $("btnList").onclick = loadRecent;
+
+  // Remote-friendly list navigation
+  document.addEventListener("keydown", (e)=>{
+    const active = document.activeElement;
+    if(active && active.tagName === "LI"){
+      if(e.key === "ArrowDown"){ e.preventDefault(); (active.nextElementSibling||active).focus(); }
+      if(e.key === "ArrowUp"){ e.preventDefault(); (active.previousElementSibling||active).focus(); }
+    }
+    if(e.key === "Backspace" || e.key === "Escape"){
+      // optional: go back to your main page
+      // location.href = "index.html";
+    }
+  });
+
+  // Auto-load recent on open
+  loadRecent();
+</script>
 </body>
 </html>
-
