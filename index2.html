@@ -101,13 +101,12 @@
   }
 
   /* =========================================================
-     LOGIN PAGE — centered username/password page
+     LOGIN PAGE (NEW) — centered username/password page
      ========================================================= */
   body:not(.loggedIn) header,
   body:not(.loggedIn) #browsePage,
   body:not(.loggedIn) #seeAllPage,
-  body:not(.loggedIn) #drawer,
-  body:not(.loggedIn) #playerModal{
+  body:not(.loggedIn) #drawer{
     display:none;
   }
 
@@ -173,6 +172,8 @@
     font-size: .95rem;
     line-height: 1.5;
   }
+
+  /* reuse your existing pill styles, but make it look great centered */
   .loginCred{
     position:relative;
     z-index:2;
@@ -532,7 +533,7 @@
   }
 
   /* =========================================================
-     HERO
+     HERO (Netflix vibe)
      ========================================================= */
   .hero{
     position:relative;
@@ -816,7 +817,7 @@
   .rowArrow.right{ right:-10px; }
 
   /* =========================================================
-     CARDS
+     CARDS (3D + premium hover)
      ========================================================= */
   .card{
     flex:0 0 auto;
@@ -1060,7 +1061,7 @@
   .episodes{ padding: 10px 12px 12px; display:grid; gap:10px; }
   .ep{
     display:grid;
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: 1fr auto auto;
     gap:10px;
     align-items:center;
     padding: 10px 10px;
@@ -1088,92 +1089,6 @@
   }
 
   /* =========================================================
-     IN-APP PLAYER (NEW) — fullscreen overlay video
-     ========================================================= */
-  body.playerOpen{
-    overflow:hidden;
-  }
-  #playerModal{
-    position:fixed;
-    inset:0;
-    z-index:700;
-    display:none;
-    align-items:center;
-    justify-content:center;
-    padding:18px;
-    background:
-      radial-gradient(1200px 700px at 30% 10%, rgba(229,9,20,.18), transparent 60%),
-      radial-gradient(900px 600px at 80% 60%, rgba(59,130,246,.12), transparent 60%),
-      rgba(0,0,0,.82);
-    backdrop-filter: blur(16px);
-  }
-  #playerModal.show{ display:flex; }
-  .playerFrame{
-    width:min(1400px, 96vw);
-    height:min(780px, 92vh);
-    border-radius: 28px;
-    border:1px solid rgba(255,255,255,.14);
-    background:
-      radial-gradient(900px 420px at 12% 0%, rgba(229,9,20,.12), transparent 60%),
-      rgba(0,0,0,.62);
-    box-shadow: var(--shadow);
-    overflow:hidden;
-    display:flex;
-    flex-direction:column;
-    position:relative;
-  }
-  .playerTop{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding: 10px 12px;
-    border-bottom:1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.04);
-  }
-  .playerTitle{
-    font-weight: 900;
-    letter-spacing:.2px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    max-width: 62%;
-  }
-  .playerBtns{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    justify-content:flex-end;
-  }
-  #playerVideo{
-    width:100%;
-    height:100%;
-    background:#000;
-    outline:none;
-  }
-  .playerHint{
-    position:absolute;
-    left:14px;
-    bottom:14px;
-    padding:10px 12px;
-    border-radius: 18px;
-    background: rgba(0,0,0,.52);
-    border:1px solid rgba(255,255,255,.12);
-    color: rgba(243,245,255,.92);
-    font-size:.84rem;
-    backdrop-filter: blur(10px);
-    opacity:0;
-    transform: translateY(8px);
-    transition: opacity .18s var(--ease), transform .18s var(--ease);
-    pointer-events:none;
-    max-width:min(520px, 92vw);
-  }
-  .playerHint.show{
-    opacity:1;
-    transform: translateY(0);
-  }
-
-  /* =========================================================
      RESPONSIVE
      ========================================================= */
   @media (max-width: 980px){
@@ -1186,14 +1101,13 @@
     .heroRight{ justify-content:flex-start; }
     .heroPoster{ width:min(310px, 76vw); }
     #searchWrap{ width: calc(100vw - var(--railW) - 36px); }
-    .playerTitle{ max-width: 52%; }
   }
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN PAGE -->
+<!-- LOGIN PAGE (NEW) -->
 <div id="loginPage">
   <div class="loginCard">
     <div class="loginTop">
@@ -1388,22 +1302,6 @@
   <div id="seasons"></div>
 </div>
 
-<!-- IN-APP PLAYER (NEW) -->
-<div id="playerModal" aria-hidden="true">
-  <div class="playerFrame">
-    <div class="playerTop">
-      <div class="playerTitle" id="playerTitle">Playing…</div>
-      <div class="playerBtns">
-        <button id="playerPlayPause" class="btn" title="Play/Pause">Play/Pause</button>
-        <button id="playerExternal" class="btn primary" title="Open external">Open External</button>
-        <button id="playerClose" class="btn" title="Close">Close</button>
-      </div>
-    </div>
-    <video id="playerVideo" controls playsinline></video>
-    <div class="playerHint" id="playerHint">Tip: ←/→ seek • Enter OK play/pause • Back closes</div>
-  </div>
-</div>
-
 <script>
 /* =========================
    CONFIG: Host is hidden
@@ -1434,7 +1332,7 @@ function pickJsonText(text){
   return i === -1 ? text : text.slice(i);
 }
 function safeName(s){ return (s||'').replace(/[^\w\s\-\.\(\)&]/g,'').trim(); }
-function trimSlash(s){ return String(s||'').replace(/\/$/,''); }
+function trimSlash(s){ return s.replace(/\/$/,''); }
 function escapeHtml(s){
   return String(s||'')
     .replaceAll('&','&amp;')
@@ -1444,59 +1342,25 @@ function escapeHtml(s){
     .replaceAll("'","&#039;");
 }
 
-function uniq(arr){
-  const out = [];
-  const seen = new Set();
-  for (const x of arr){
-    const k = String(x||'');
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    out.push(k);
-  }
-  return out;
-}
-
-/* ---------------- Fetch with timeout + proxy fallback (IMPROVED) ---------------- */
 function wrapUrl(url){
   if (PROXY_MODE === 'none') return url;
   if (PROXY_MODE === 'self') return PROXY_BASE + url;
   return url;
 }
-
-async function fetchWithTimeout(url, ms=9000){
-  const ctrl = new AbortController();
-  const t = setTimeout(()=> ctrl.abort(), ms);
-  try{
-    return await fetch(url, {
-      cache:'no-store',
-      redirect:'follow',
-      mode:'cors',
-      signal: ctrl.signal
-    });
-  } finally {
-    clearTimeout(t);
-  }
-}
-
 async function fetchJsonRobust(url){
   const direct = wrapUrl(url);
-
-  // IMPORTANT: when your page is HTTPS (GitHub Pages), direct http:// will be blocked (mixed content).
-  // So we try HTTPS-friendly proxy URLs too.
   const publicTries = [
     direct,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://thingproxy.freeboard.io/fetch/${url}`,
     `https://cors.isomorphic-git.org/${url}`
   ];
-
   const tries = (PROXY_MODE === 'public') ? publicTries : [direct];
 
   let lastErr = null;
   for (const u of tries){
     try{
-      const r = await fetchWithTimeout(u, 9500);
+      const r = await fetch(u, { cache:'no-store' });
       const text = await r.text();
       const cleaned = pickJsonText(text);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -1530,10 +1394,7 @@ const S = {
   hero: { kind:'', item:null, catId:'' },
 
   // see all
-  seeAll: { open:false, catId:'', catName:'' },
-
-  // player
-  player: { open:false, url:'', title:'', poster:'' },
+  seeAll: { open:false, catId:'', catName:'' }
 };
 
 const ROW_PREVIEW_COUNT = 14;
@@ -1553,114 +1414,10 @@ window.addEventListener('scroll', ()=>{
 });
 
 /* =========================================================
-   IN-APP PLAYER (NEW)
-   ========================================================= */
-let hintTimer = null;
-function showPlayerHint(msg){
-  const el = $('playerHint');
-  if (!el) return;
-  el.textContent = msg || 'Tip: ←/→ seek • Enter OK play/pause • Back closes';
-  el.classList.add('show');
-  clearTimeout(hintTimer);
-  hintTimer = setTimeout(()=> el.classList.remove('show'), 1800);
-}
-
-function playerIsOpen(){
-  return $('playerModal').classList.contains('show');
-}
-
-function openPlayer(url, title, poster){
-  if (!url) return;
-
-  // Close overlays that can conflict
-  closeSearchHard();
-  closeDrawer();
-
-  S.player.open = true;
-  S.player.url = url;
-  S.player.title = title || 'Playing…';
-  S.player.poster = poster || '';
-
-  $('playerTitle').textContent = S.player.title;
-
-  const v = $('playerVideo');
-  try{
-    v.pause();
-  }catch{}
-  v.removeAttribute('src');
-  v.load();
-
-  // Some TV browsers like having poster set (optional)
-  if (S.player.poster) v.setAttribute('poster', S.player.poster);
-  else v.removeAttribute('poster');
-
-  // Set src and play
-  v.src = url;
-
-  $('playerModal').classList.add('show');
-  document.body.classList.add('playerOpen');
-
-  showPlayerHint('Loading…');
-
-  // Try autoplay
-  setTimeout(async ()=>{
-    try{
-      await v.play();
-      showPlayerHint('Playing • ←/→ seek 10s • Enter play/pause • Back closes');
-    }catch(e){
-      // If autoplay blocked, user can press OK/Enter
-      showPlayerHint('Press OK/Enter to Play • Back closes');
-    }
-  }, 60);
-
-  // Focus close for remote navigation
-  setTimeout(()=> tvFocus($('playerClose')), 80);
-}
-
-function closePlayer(){
-  const v = $('playerVideo');
-  try{ v.pause(); }catch{}
-  try{ v.removeAttribute('src'); v.load(); }catch{}
-  $('playerModal').classList.remove('show');
-  document.body.classList.remove('playerOpen');
-  S.player.open = false;
-
-  // Restore focus to something sensible
-  if (S.loggedIn){
-    setTimeout(()=> tvFocus($('heroPlay').disabled ? $('moviesBtn') : $('heroPlay')), 60);
-  } else {
-    setTimeout(()=> tvFocus($('username')), 60);
-  }
-}
-
-$('playerClose').onclick = closePlayer;
-$('playerExternal').onclick = ()=>{
-  if (!S.player.url) return;
-  window.open(S.player.url,'_blank','noopener');
-};
-$('playerPlayPause').onclick = ()=>{
-  const v = $('playerVideo');
-  if (!v) return;
-  if (v.paused){
-    v.play().catch(()=>{});
-    showPlayerHint('Play');
-  } else {
-    v.pause();
-    showPlayerHint('Pause');
-  }
-};
-
-// Video error -> show hint + allow external
-$('playerVideo').addEventListener('error', ()=>{
-  showPlayerHint('Cannot play this format here • Try Open External');
-});
-
-/* =========================================================
-   TV REMOTE / KEYBOARD NAV (Samsung/LG/webOS)
+   TV REMOTE / KEYBOARD NAV (old Samsung browsers)
    - Arrow keys move focus
    - OK/Enter clicks
-   - Back/Return closes search/drawer/player/seeAll
-   - Media keys: play/pause/ff/rw supported in player
+   - Back/Return closes search/drawer/seeAll
    ========================================================= */
 function clearTvFocus(){
   const cur = document.querySelector('.tv-focus');
@@ -1685,7 +1442,6 @@ function isVisibleEl(el){
 
 function activeScope(){
   if (!S.loggedIn) return $('loginPage');
-  if (playerIsOpen()) return $('playerModal');
   if ($('searchWrap').classList.contains('open')) return $('searchWrap');
   if ($('drawer').style.display !== 'none') return $('drawer');
   if ($('seeAllPage').style.display !== 'none') return $('seeAllPage');
@@ -1698,8 +1454,7 @@ function collectFocusable(){
     'input:not([disabled])',
     'a[href]',
     '[tabindex="0"]',
-    'summary',
-    'video'
+    'summary'
   ].join(',');
 
   const scope = activeScope();
@@ -1717,6 +1472,7 @@ function collectFocusable(){
   return all.filter(el=>{
     if (!isVisibleEl(el)) return false;
     const rect = el.getBoundingClientRect();
+    // keep nearby items only (fast)
     if (rect.bottom < -margin) return false;
     if (rect.top > vh + margin) return false;
     if (rect.right < -margin) return false;
@@ -1781,12 +1537,6 @@ function closeSearchHard(){
 function handleBack(){
   if (!S.loggedIn) return false;
 
-  // Player closes first
-  if (playerIsOpen()){
-    closePlayer();
-    return true;
-  }
-
   if ($('searchWrap').classList.contains('open')){
     closeSearchHard();
     tvFocus($('toggleSearch'));
@@ -1806,12 +1556,6 @@ function handleBack(){
 }
 
 function handleOk(){
-  // If player open: OK toggles play/pause
-  if (playerIsOpen()){
-    $('playerPlayPause').click();
-    return;
-  }
-
   const el = document.activeElement;
 
   if (!S.loggedIn){
@@ -1826,81 +1570,9 @@ function handleOk(){
   }
 }
 
-function handlePlayerMediaKey(key, code){
-  if (!playerIsOpen()) return false;
-  const v = $('playerVideo');
-  if (!v) return false;
-
-  // Common TV media keycodes:
-  // Play 415, Pause 19/413 (varies), Stop 413, Rew 412/417, FF 417/418
-  const k = key;
-  const c = code;
-
-  const seek = (sec)=>{
-    try{
-      const t = Math.max(0, Math.min((v.duration||Infinity), (v.currentTime||0) + sec));
-      v.currentTime = t;
-    }catch{}
-  };
-
-  if (k === ' ' || k === 'Enter' || c === 13){
-    $('playerPlayPause').click();
-    return true;
-  }
-
-  if (k === 'ArrowLeft' || c === 37){ seek(-10); showPlayerHint('⏪ -10s'); return true; }
-  if (k === 'ArrowRight' || c === 39){ seek( 10); showPlayerHint('⏩ +10s'); return true; }
-
-  if (k === 'ArrowUp' || c === 38){
-    try{ v.volume = Math.min(1, (v.volume||0) + 0.08); }catch{}
-    showPlayerHint('Volume +');
-    return true;
-  }
-  if (k === 'ArrowDown' || c === 40){
-    try{ v.volume = Math.max(0, (v.volume||0) - 0.08); }catch{}
-    showPlayerHint('Volume -');
-    return true;
-  }
-
-  // Play/Pause keys
-  if (c === 415){ v.play().catch(()=>{}); showPlayerHint('Play'); return true; }
-  if (c === 19 || c === 413){ v.pause(); showPlayerHint('Pause/Stop'); return true; }
-  if (c === 417 || c === 412){ seek(-30); showPlayerHint('⏪ -30s'); return true; }
-  if (c === 418){ seek(30); showPlayerHint('⏩ +30s'); return true; }
-
-  return false;
-}
-
 document.addEventListener('keydown', (e)=>{
   const key = e.key;
   const code = e.keyCode || e.which;
-
-  // If player open, consume media + arrows for playback
-  if (playerIsOpen()){
-    const isBack =
-      key === 'Escape' ||
-      key === 'Backspace' ||
-      key === 'BrowserBack' ||
-      key === 'GoBack' ||
-      key === 'Return' ||
-      code === 10009 || // Samsung Tizen Back
-      code === 461  || // LG/WebOS Back (often)
-      code === 27   ||
-      code === 8;
-
-    if (isBack){
-      e.preventDefault(); e.stopPropagation();
-      closePlayer();
-      return;
-    }
-
-    const handledMedia = handlePlayerMediaKey(key, code);
-    if (handledMedia){
-      e.preventDefault(); e.stopPropagation();
-      return;
-    }
-    // If not handled, let it fall through
-  }
 
   const isBack =
     key === 'Escape' ||
@@ -1991,7 +1663,7 @@ $('seeAllBack').onclick = ()=>{
   else showBrowsePage(true);
 };
 
-/* ===== Search show/hide ===== */
+/* ===== Search show/hide (kept) ===== */
 function openSearch(){
   if (!S.loggedIn) return;
   $('searchWrap').classList.add('open');
@@ -2012,7 +1684,6 @@ $('toggleSearch').onclick = ()=>{
 };
 document.addEventListener('click', (e)=>{
   if (!S.loggedIn) return;
-  if (playerIsOpen()) return;
   const inside = $('searchWrap').contains(e.target) || $('toggleSearch').contains(e.target);
   if (!inside) closeSearchIfEmpty();
 });
@@ -2185,16 +1856,7 @@ function scheduleAutoConnect(){
   autoConnectTimer = setTimeout(()=> doConnect(), 600);
 }
 
-/* =========================================================
-   Login (IMPROVED): tries HTTPS version too + keeps proxy fallback
-   ========================================================= */
-async function tryLoginWithHost(baseHost){
-  const url = `${trimSlash(baseHost)}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`;
-  const data = await fetchJsonRobust(url);
-  const ok = !!(data && data.user_info && String(data.user_info.auth) === '1');
-  return { ok, data };
-}
-
+/* ---------------- Login (converted to function) ---------------- */
 async function doConnect(){
   if (isConnecting || S.loggedIn) return;
 
@@ -2206,29 +1868,10 @@ async function doConnect(){
   setStatus('Connecting…','warn');
 
   try{
-    // Try host variants (HTTPS first when possible)
-    const candidates = uniq([
-      S.host,
-      S.host.replace(/^http:\/\//i,'https://'),
-      S.host.replace(/^https:\/\//i,'http://')
-    ]);
+    const url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`;
+    const data = await fetchJsonRobust(url);
 
-    let authed = false;
-
-    for (const h of candidates){
-      try{
-        const { ok } = await tryLoginWithHost(h);
-        if (ok){
-          S.host = trimSlash(h);
-          authed = true;
-          break;
-        }
-      }catch(e){
-        // keep trying
-      }
-    }
-
-    if (authed){
+    if (data.user_info && String(data.user_info.auth) === '1'){
       S.loggedIn = true;
       document.body.classList.add('loggedIn');
 
@@ -2249,14 +1892,14 @@ async function doConnect(){
     } else {
       S.loggedIn = false;
       document.body.classList.remove('loggedIn');
-      setStatus('Invalid login or API blocked','err');
+      setStatus('Invalid login','err');
       setTimeout(()=> tvFocus($('username')), 60);
     }
   }catch(e){
     console.error(e);
     S.loggedIn = false;
     document.body.classList.remove('loggedIn');
-    setStatus('Cannot connect (API). Check host/proxy/HTTPS.','err');
+    setStatus('Cannot connect (API). Check host or proxy.','err');
     setTimeout(()=> tvFocus($('username')), 60);
   } finally {
     isConnecting = false;
@@ -2327,30 +1970,20 @@ function setHero(kind, item, catId){
   }
 }
 
-function buildPlayableUrl(kind, item){
-  if (!item) return '';
-  if (kind === 'live'){
-    return `${S.host}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.m3u8`;
-  }
-  if (kind === 'vod'){
-    const ext = (item.container_extension || 'mp4').replace(/^\./,'');
-    return `${S.host}/movie/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.${ext}`;
-  }
-  return '';
-}
-
 $('heroPlay').onclick = ()=>{
   const {kind, item} = S.hero;
   if (!item) return;
 
-  if (kind === 'series'){
+  if (kind === 'live'){
+    const m3u8 = `${S.host}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.m3u8`;
+    window.open(m3u8,'_blank','noopener');
+  } else if (kind === 'vod'){
+    const ext = (item.container_extension || 'mp4').replace(/^\./,'');
+    const url = `${S.host}/movie/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.${ext}`;
+    window.open(url,'_blank','noopener');
+  } else {
     openSeries(item);
-    return;
   }
-
-  const url = buildPlayableUrl(kind, item);
-  const poster = getPoster(kind, item);
-  openPlayer(url, item.name || 'Playing…', poster);
 };
 
 $('heroFav').onclick = ()=>{
@@ -2369,7 +2002,11 @@ async function loadKind(kind){
   setActiveNav(kind);
 
   closeDrawer();
-  closeSearchHard();
+  $('search').value = '';
+  $('searchResults').classList.remove('show');
+  $('searchResults').innerHTML = '';
+  $('searchWrap').classList.remove('open');
+
   showBrowsePage(true);
 
   S.kind = kind;
@@ -2575,7 +2212,11 @@ async function openCategoryPage(catId, catName, pushState=true){
   if (!S.loggedIn) return setStatus('Login first','err');
 
   closeDrawer();
-  closeSearchHard();
+  $('search').value = '';
+  $('searchResults').classList.remove('show');
+  $('searchResults').innerHTML = '';
+  $('searchWrap').classList.remove('open');
+
   showSeeAllPage(catId, catName, pushState);
 
   const grid = $('seeAllGrid');
@@ -2694,13 +2335,16 @@ function makeCard(item, catId){
       $('heroPlay').disabled = false;
     }
 
-    if (S.kind==='series'){
+    if (S.kind==='live'){
+      const m3u8 = `${S.host}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.m3u8`;
+      window.open(m3u8,'_blank','noopener');
+    } else if (S.kind==='vod'){
+      const ext = (item.container_extension || 'mp4').replace(/^\./,'');
+      const url = `${S.host}/movie/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.${ext}`;
+      window.open(url,'_blank','noopener');
+    } else {
       openSeries(item);
-      return;
     }
-
-    const url = buildPlayableUrl(S.kind, item);
-    openPlayer(url, item.name || 'Playing…', poster);
   };
 
   return div;
@@ -2817,13 +2461,6 @@ async function openSeries(serie){
         const ext = (ep.container_extension || 'mp4').replace(/^\./,'');
         const epUrl = `${S.host}/series/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ep.id}.${ext}`;
 
-        const playBtn = document.createElement('button');
-        playBtn.className = 'btn primary';
-        playBtn.textContent = 'Play';
-        playBtn.onclick = ()=>{
-          openPlayer(epUrl, `${S.currentSeries?.name || 'Series'} • ${title.textContent}`, S.hero?.item?.cover || '');
-        };
-
         const open = document.createElement('a');
         open.className = 'linkBtn';
         open.textContent = 'Open';
@@ -2840,7 +2477,6 @@ async function openSeries(serie){
         };
 
         row.appendChild(title);
-        row.appendChild(playBtn);
         row.appendChild(open);
         row.appendChild(copy);
         wrap.appendChild(row);
