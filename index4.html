@@ -2,38 +2,254 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1" />
   <title>STARTV</title>
   <style>
-    html,body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
-    #frame { position:fixed; inset:0; width:100%; height:100%; border:0; }
-
-    /* Player overlay */
-    #playerOverlay{
-      position:fixed; inset:0; background:#000; display:none; z-index:9999;
-      align-items:center; justify-content:center;
-    }
-    #playerVideo{
-      width:100vw; height:100vh;
-    }
-    #osd{
-      position:fixed; left:18px; bottom:18px;
-      color:#fff; font: 600 18px/1.2 system-ui, sans-serif;
-      background:rgba(0,0,0,.45); padding:10px 12px; border-radius:12px;
-      z-index:10000; display:none;
-    }
+    body{margin:0;background:#000;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+    #boot{position:fixed;inset:0;display:grid;place-items:center}
+    #boot div{opacity:.85}
   </style>
 </head>
-<body tabindex="0">
-  <!-- Load the site (local copy) -->
-  <iframe id="frame" src="./index3.html"></iframe>
+<body>
+  <div id="boot"><div>Loading STARTV…</div></div>
 
-  <!-- In-app player -->
-  <div id="playerOverlay">
-    <video id="playerVideo" playsinline webkit-playsinline></video>
+<script>
+(async () => {
+  const REMOTE_URL = "https://a860h040.github.io/TV/index3.html";
+  const BASE_URL   = "https://a860h040.github.io/TV/";
+
+  // Injected overlay + player + remote-navigation
+  const INJECT = `
+<style>
+  :focus{outline:3px solid #ff2a2a;outline-offset:2px;border-radius:10px}
+  #sysStatus{position:fixed;left:12px;top:12px;z-index:9998;
+    background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
+    padding:8px 10px;border-radius:12px;font-size:13px;opacity:.9}
+  #playerOverlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:none}
+  #playerOverlay.show{display:block}
+  #playerWrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  #player{width:100%;height:100%;object-fit:contain;background:#000}
+  #controls{position:absolute;left:16px;right:16px;bottom:16px;display:flex;gap:10px;align-items:center;justify-content:center;opacity:.95}
+  .btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;
+       padding:10px 14px;border-radius:14px;font-size:16px}
+  .hint{position:absolute;left:16px;top:52px;opacity:.75;font-size:14px}
+</style>
+
+<div id="sysStatus">Ready</div>
+
+<div id="playerOverlay" aria-hidden="true">
+  <div class="hint">Remote: ◀▶ seek | OK play/pause | BACK close</div>
+  <div id="playerWrap">
+    <video id="player" controls></video>
+    <div id="controls">
+      <button class="btn" id="btnBack10" tabindex="0">-10s</button>
+      <button class="btn" id="btnPlay" tabindex="0">Play/Pause</button>
+      <button class="btn" id="btnFwd30" tabindex="0">+30s</button>
+      <button class="btn" id="btnClose" tabindex="0">Close</button>
+    </div>
   </div>
-  <div id="osd"></div>
+</div>
 
-  <script src="./player.js"></script>
+<script>
+(() => {
+  const statusEl = document.getElementById("sysStatus");
+  const overlay = document.getElementById("playerOverlay");
+  const video = document.getElementById("player");
+  const btnBack10 = document.getElementById("btnBack10");
+  const btnPlay = document.getElementById("btnPlay");
+  const btnFwd30 = document.getElementById("btnFwd30");
+  const btnClose = document.getElementById("btnClose");
+
+  let lastFocused = null;
+
+  const showStatus = (m) => { if(statusEl) statusEl.textContent = m; };
+
+  const isVideo = (u="") => /\.(m3u8|mp4|mkv|mpd|webm)(\\?|#|$)/i.test(String(u||""));
+
+  function openPlayer(url){
+    lastFocused = document.activeElement;
+    overlay.classList.add("show");
+    overlay.setAttribute("aria-hidden","false");
+    showStatus("Playing…");
+
+    video.src = url;
+    video.play().catch(() => showStatus("Press OK to Play/Pause"));
+
+    btnPlay.focus();
+  }
+  function closePlayer(){
+    try{ video.pause(); }catch(e){}
+    video.removeAttribute("src");
+    try{ video.load(); }catch(e){}
+
+    overlay.classList.remove("show");
+    overlay.setAttribute("aria-hidden","true");
+    showStatus("Ready");
+
+    if (lastFocused && lastFocused.focus) lastFocused.focus();
+  }
+  function togglePlay(){
+    if (video.paused) video.play().catch(()=>{});
+    else video.pause();
+  }
+  function seekBy(sec){
+    try { video.currentTime = Math.max(0, (video.currentTime||0) + sec); } catch(e){}
+  }
+
+  btnBack10.addEventListener("click", () => seekBy(-10));
+  btnFwd30.addEventListener("click", () => seekBy(+30));
+  btnPlay.addEventListener("click", togglePlay);
+  btnClose.addEventListener("click", closePlayer);
+
+  // Intercept <a href="video.*">
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest && e.target.closest("a");
+    if (!a) return;
+    const href = a.getAttribute("href") || a.href || "";
+    if (isVideo(href)) {
+      e.preventDefault();
+      e.stopPropagation();
+      openPlayer(href);
+    }
+  }, true);
+
+  // Intercept window.open(video)
+  const _open = window.open;
+  window.open = function(url, ...rest){
+    if (isVideo(url)) { openPlayer(url); return null; }
+    return _open.call(window, url, ...rest);
+  };
+
+  // Keep things focusable (remote navigation)
+  function makeFocusable(root=document){
+    const els = root.querySelectorAll("a,button,input,select,textarea,[role='button'],[onclick]");
+    els.forEach(el => { if (!el.hasAttribute("tabindex")) el.tabIndex = 0; });
+  }
+  makeFocusable();
+  new MutationObserver(() => makeFocusable()).observe(document.documentElement, {subtree:true, childList:true});
+
+  // Simple spatial navigation for LG remote arrows
+  function focusables(){
+    const list = Array.from(document.querySelectorAll('[tabindex]:not([tabindex="-1"]),a,button,input,select,textarea'))
+      .filter(el => el && el.offsetParent !== null && !el.disabled);
+    return list;
+  }
+  function rectCenter(r){ return {x:r.left + r.width/2, y:r.top + r.height/2}; }
+
+  function moveFocus(dir){
+    const cur = document.activeElement;
+    const all = focusables();
+    if (!all.length) return;
+
+    const curEl = (cur && all.includes(cur)) ? cur : all[0];
+    if (curEl !== document.activeElement) curEl.focus();
+
+    const cr = curEl.getBoundingClientRect();
+    const c = rectCenter(cr);
+
+    let best = null;
+    let bestScore = Infinity;
+
+    for (const el of all){
+      if (el === curEl) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      const p = rectCenter(r);
+      const dx = p.x - c.x;
+      const dy = p.y - c.y;
+
+      let ok = false;
+      if (dir === "left")  ok = dx < -1;
+      if (dir === "right") ok = dx >  1;
+      if (dir === "up")    ok = dy < -1;
+      if (dir === "down")  ok = dy >  1;
+      if (!ok) continue;
+
+      const primary = (dir === "left" || dir === "right") ? Math.abs(dx) : Math.abs(dy);
+      const secondary = (dir === "left" || dir === "right") ? Math.abs(dy) : Math.abs(dx);
+      const score = primary + secondary * 0.35;
+
+      if (score < bestScore){
+        bestScore = score;
+        best = el;
+      }
+    }
+    if (best) best.focus();
+  }
+
+  document.addEventListener("keydown", (e) => {
+    const k = e.key;
+    const code = e.keyCode;
+
+    // If player open: handle player keys only
+    if (overlay.classList.contains("show")) {
+      if (k === "Backspace" || k === "Escape" || code === 461) { e.preventDefault(); closePlayer(); return; }
+      if (k === "Enter") { e.preventDefault(); togglePlay(); return; }
+      if (k === "ArrowLeft") { e.preventDefault(); seekBy(-10); return; }
+      if (k === "ArrowRight") { e.preventDefault(); seekBy(+30); return; }
+      return;
+    }
+
+    // App navigation
+    if (k === "ArrowLeft")  { e.preventDefault(); moveFocus("left"); return; }
+    if (k === "ArrowRight") { e.preventDefault(); moveFocus("right"); return; }
+    if (k === "ArrowUp")    { e.preventDefault(); moveFocus("up"); return; }
+    if (k === "ArrowDown")  { e.preventDefault(); moveFocus("down"); return; }
+
+    // BACK key: go back in page history
+    if (k === "Backspace" || k === "Escape" || code === 461) {
+      // let the page handle if it has its own back, otherwise history back
+      e.preventDefault();
+      history.back();
+      return;
+    }
+
+    // OK key
+    if (k === "Enter") {
+      const a = document.activeElement;
+      if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return; // allow keyboard
+      if (a && a.click) { e.preventDefault(); a.click(); }
+    }
+  }, true);
+
+  // Small fetch error hint (does NOT print your username/password)
+  const _fetch = window.fetch;
+  window.fetch = async (...args) => {
+    try {
+      const res = await _fetch(...args);
+      return res;
+    } catch (err) {
+      showStatus("Network/API failed");
+      throw err;
+    }
+  };
+
+})();
+<\/script>
+`;
+
+  const res = await fetch(REMOTE_URL, { cache: "no-store" });
+  const html = await res.text();
+
+  // Insert <base> + our injected overlay/script into the real HTML doc
+  let patched = html;
+
+  // Ensure base exists so relative assets still work
+  patched = patched.replace(/<head([^>]*)>/i, `<head$1><base href="${BASE_URL}">`);
+
+  // Inject our overlay + player + remote code before </body>
+  patched = patched.replace(/<\/body>/i, `${INJECT}</body>`);
+
+  // Render as the real document (keeps script order and modules from remote page)
+  document.open();
+  document.write(patched);
+  document.close();
+
+})().catch((e) => {
+  console.error(e);
+  document.body.innerHTML = "<div style='padding:16px'>Failed to load STARTV. Check internet/URL.</div>";
+});
+</script>
 </body>
 </html>
+
