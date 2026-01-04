@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STARTV</title>
+  <style>
+    html,body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
+    #frame { position:fixed; inset:0; width:100%; height:100%; border:0; }
+
+    /* Player overlay */
+    #playerOverlay{
+      position:fixed; inset:0; background:#000; display:none; z-index:9999;
+      align-items:center; justify-content:center;
+    }
+    #playerVideo{
+      width:100vw; height:100vh;
+    }
+    #osd{
+      position:fixed; left:18px; bottom:18px;
+      color:#fff; font: 600 18px/1.2 system-ui, sans-serif;
+      background:rgba(0,0,0,.45); padding:10px 12px; border-radius:12px;
+      z-index:10000; display:none;
+    }
+  </style>
+</head>
+<body tabindex="0">
+  <!-- Load the site (local copy) -->
+  <iframe id="frame" src="./index3.html"></iframe>
+
+  <!-- In-app player -->
+  <div id="playerOverlay">
+    <video id="playerVideo" playsinline webkit-playsinline></video>
+  </div>
+  <div id="osd"></div>
+
+  <script src="./player.js"></script>
+</body>
+</html>
