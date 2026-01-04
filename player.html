@@ -1,332 +1,221 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>STARTV — Player</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-
-<style>
-  :root{
-    --bg:#04050a;
-    --text:#f3f5ff;
-    --muted:rgba(243,245,255,.72);
-    --accent:#e50914;
-    --panel:rgba(0,0,0,.55);
-    --border:rgba(255,255,255,.16);
-    --focusGlow:0 0 0 3px rgba(255,255,255,.35), 0 10px 40px rgba(229,9,20,.25);
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0; background:var(--bg); color:var(--text); font-family:Poppins, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
-  .wrap{position:fixed; inset:0; display:grid; grid-template-rows: 1fr auto;}
-  video{width:100%; height:100%; background:black; object-fit:contain;}
-  .bar{
-    position:relative;
-    padding:10px 12px;
-    background:linear-gradient(180deg, rgba(0,0,0,.10), var(--panel));
-    border-top:1px solid rgba(255,255,255,.10);
-    backdrop-filter: blur(10px);
-  }
-  .topline{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;}
-  .title{font-weight:900; font-size:13px; color:rgba(255,255,255,.92); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .hint{font-size:12px; color:rgba(255,255,255,.58); font-weight:800;}
-  .controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-  button{
-    border:1px solid var(--border);
-    background:rgba(255,255,255,.06);
-    color:var(--text);
-    padding:10px 12px;
-    border-radius:14px;
-    font-weight:900;
-    cursor:pointer;
-    outline:none;
-  }
-  button:focus-visible{box-shadow:var(--focusGlow)}
-  .primary{border:0; background:linear-gradient(135deg, var(--accent), #ff3340);}
-  .range{
-    flex:1;
-    min-width: 180px;
-    display:flex; align-items:center; gap:10px;
-  }
-  input[type="range"]{width:100%}
-  .time{font-size:12px; color:rgba(255,255,255,.75); font-weight:800; min-width:110px; text-align:right;}
-  .toast{
-    position:fixed; left:14px; right:14px; bottom:90px;
-    display:none; z-index:10;
-  }
-  .toast.show{display:block}
-  .toastInner{
-    max-width:980px; margin:0 auto;
-    padding:12px 14px; border-radius:16px;
-    border:1px solid rgba(255,255,255,.14);
-    background:rgba(0,0,0,.55);
-    backdrop-filter: blur(10px);
-    box-shadow:0 18px 60px rgba(0,0,0,.35);
-    color:rgba(255,255,255,.86);
-    font-size:13px;
-  }
-  .hiddenBar .bar{display:none}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STARTV — Player</title>
+  <style>
+    html,body{height:100%;margin:0;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+    video{width:100%;height:100%;background:#000}
+    #hud{
+      position:fixed;left:14px;right:14px;top:14px;
+      display:flex;gap:10px;align-items:center;justify-content:space-between;
+      padding:10px 12px;border-radius:14px;
+      background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      z-index:10;
+    }
+    #title{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78vw}
+    #msg{opacity:.8;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78vw}
+    .btn{
+      border:0;cursor:pointer;border-radius:999px;padding:10px 14px;
+      font-weight:800;color:#fff;background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.18);
+    }
+    .btn:active{transform:scale(.99)}
+  </style>
 </head>
-
 <body>
-<div class="wrap" id="wrap">
-  <video id="video" playsinline></video>
-
-  <div class="bar" id="bar">
-    <div class="topline">
-      <div class="title" id="vTitle">Loading…</div>
-      <div class="hint">Enter: Play/Pause • ←/→ Seek • Back: Return</div>
+  <div id="hud">
+    <div style="min-width:0">
+      <div id="title">Loading…</div>
+      <div id="msg">Tip: OK/Enter Play/Pause • ←/→ Seek • Back returns</div>
     </div>
-
-    <div class="controls">
-      <button class="primary" id="btnPlay" type="button">▶ / ❚❚</button>
-      <button id="btnBack" type="button">⟵ Back</button>
-      <button id="btnFS" type="button">⛶ Fullscreen</button>
-
-      <div class="range">
-        <input id="seek" type="range" min="0" max="1000" value="0" />
-        <div class="time" id="time">00:00 / 00:00</div>
-      </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      <button class="btn" id="toggle">Play/Pause</button>
+      <button class="btn" id="openExternal">Open External</button>
+      <button class="btn" id="back">Back</button>
     </div>
   </div>
-</div>
 
-<div class="toast" id="toast"><div class="toastInner" id="toastInner"></div></div>
+  <div id="wrap">
+    <video id="v" controls playsinline></video>
+  </div>
 
-<!-- HLS.js fallback (only used if needed) -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+  <!-- HLS support for .m3u8 when TV browser doesn't support it natively -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15"></script>
+  <script>
+    const SHEET_READ_URL = "./sheet.json";           // same GitHub Pages folder
+    const PAGE1_URL = "./index.html";                // your page 1 file name
+    const LS_KEY = "startv_last_selection";
 
-<script>
-const $ = s => document.querySelector(s);
+    const $ = (id)=>document.getElementById(id);
+    const v = $("v");
 
-function toast(msg){
-  const t = $("#toast");
-  $("#toastInner").innerHTML = msg;
-  t.classList.add("show");
-  clearTimeout(toast._t);
-  toast._t = setTimeout(()=>t.classList.remove("show"), 2400);
-}
-function normalize(s){ return (s||"").toLowerCase().trim(); }
+    function setHud(title, msg){
+      $("title").textContent = title || "";
+      $("msg").textContent = msg || "";
+    }
 
-function fmt(sec){
-  sec = Math.max(0, Math.floor(sec || 0));
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  if (h > 0) return `${String(h)}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-}
+    function getQuerySelection(){
+      const sp = new URLSearchParams(location.search);
+      const url = sp.get("url");
+      if (!url) return null;
+      return {
+        url,
+        title: sp.get("title") || "",
+        poster: sp.get("poster") || "",
+        ts: Date.now()
+      };
+    }
 
-async function fetchSheet(url){
-  const u = url + (url.includes("?") ? "&" : "?") + "v=" + Date.now();
-  const res = await fetch(u, { cache: "no-store" });
-  if (!res.ok) throw new Error("Sheet fetch failed: " + res.status);
-  const data = await res.json();
-  if (!data || !Array.isArray(data.items)) throw new Error("Bad sheet format.");
-  return data.items;
-}
+    function loadFromLocal(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      }catch{ return null; }
+    }
 
-function findItem(items, id){
-  return items.find(x => String(x.id) === String(id));
-}
+    async function loadFromSheet(){
+      const r = await fetch(SHEET_READ_URL + "?v=" + Date.now(), { cache:"no-store" });
+      if (!r.ok) throw new Error("sheet fetch failed");
+      const j = await r.json();
+      if (!j || !j.url) return null;
+      return j;
+    }
 
-async function resolveSource(){
-  const qs = new URLSearchParams(location.search);
-  const sheet = qs.get("sheet");
-  const id = qs.get("id");
-  const ep = qs.get("ep");
+    async function loadSelection(){
+      // 1) If URL params exist, prefer them
+      const fromQuery = getQuerySelection();
+      if (fromQuery){
+        try{ localStorage.setItem(LS_KEY, JSON.stringify(fromQuery)); }catch{}
+        return fromQuery;
+      }
 
-  if (!sheet || !id) throw new Error("Missing sheet or id.");
+      // 2) Try GitHub sheet.json
+      try{
+        const fromSheet = await loadFromSheet();
+        if (fromSheet){
+          try{ localStorage.setItem(LS_KEY, JSON.stringify(fromSheet)); }catch{}
+          return fromSheet;
+        }
+      }catch{}
 
-  const items = await fetchSheet(sheet);
-  const item = findItem(items, id);
-  if (!item) throw new Error("Item not found in sheet: " + id);
+      // 3) Fallback: localStorage (same device)
+      return loadFromLocal();
+    }
 
-  let src = "";
-  let title = item.title || "Playing…";
+    function isM3U8(url){ return /\.m3u8(\?|$)/i.test(url || ""); }
+    function isMKV(url){ return /\.mkv(\?|$)/i.test(url || ""); }
 
-  if (item.type === "series"){
-    const list = Array.isArray(item.episodes) ? item.episodes : [];
-    const idx = ep !== null ? Number(ep) : 0;
-    const chosen = list[idx] || list[0];
-    if (!chosen || !chosen.src) throw new Error("Episode source missing.");
-    src = chosen.src;
-    title = `${item.title} — ${chosen.title || ("Episode " + (idx+1))}`;
-  } else {
-    if (!item.src) throw new Error("Movie src missing.");
-    src = item.src;
-  }
+    let hls = null;
 
-  return { src, title };
-}
+    async function playUrl(url, title, poster){
+      if (!url){
+        setHud("No link found", "Go back to Page 1 and select a TV/Movie/Episode.");
+        return;
+      }
 
-let hls = null;
+      setHud(title || "Playing…", url);
 
-async function playUrl(url){
-  const video = $("#video");
+      // Poster optional
+      if (poster) v.setAttribute("poster", poster);
+      else v.removeAttribute("poster");
 
-  // Cleanup previous
-  if (hls){ try{ hls.destroy(); }catch{} hls = null; }
-  video.pause();
-  video.removeAttribute("src");
-  video.load();
+      // Reset old
+      try{ v.pause(); }catch{}
+      v.removeAttribute("src");
+      v.load();
+      if (hls){ try{ hls.destroy(); }catch{} hls = null; }
 
-  const lower = normalize(url);
+      // Warn about MKV (often not supported in browsers)
+      if (isMKV(url)){
+        setHud(title || "MKV selected", "MKV may not play in TV browser. Try Open External if it fails.");
+      }
 
-  // Native HLS?
-  const canNativeHls = video.canPlayType("application/vnd.apple.mpegURL") !== "";
+      // HLS .m3u8 handling
+      if (isM3U8(url)){
+        if (v.canPlayType("application/vnd.apple.mpegurl")){
+          v.src = url;
+        } else if (window.Hls && Hls.isSupported()){
+          hls = new Hls({ maxBufferLength: 30 });
+          hls.loadSource(url);
+          hls.attachMedia(v);
+        } else {
+          setHud(title || "Cannot play HLS", "This TV browser cannot play .m3u8 here. Use Open External.");
+          return;
+        }
+      } else {
+        // mp4/webm/etc
+        v.src = url;
+      }
 
-  if (lower.includes(".m3u8") && !canNativeHls && window.Hls && Hls.isSupported()){
-    hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.ERROR, function(_, data){
-      console.warn("HLS error", data);
-      toast("HLS error (maybe CORS / unsupported stream).");
+      // Try autoplay
+      try{
+        await v.play();
+        setHud(title || "Playing…", "OK/Enter Play/Pause • ←/→ Seek 10s • Back returns");
+      }catch{
+        setHud(title || "Ready", "Press OK/Enter to Play • ←/→ Seek • Back returns");
+      }
+    }
+
+    function goBack(){
+      location.href = PAGE1_URL + "#browse";
+    }
+
+    $("back").onclick = goBack;
+    $("openExternal").onclick = ()=>{
+      const sel = loadFromLocal();
+      if (sel?.url) window.open(sel.url, "_blank", "noopener");
+    };
+    $("toggle").onclick = ()=>{
+      if (v.paused) v.play().catch(()=>{});
+      else v.pause();
+    };
+
+    // Remote keys
+    document.addEventListener("keydown", (e)=>{
+      const k = e.key;
+      const code = e.keyCode || e.which;
+
+      const isBack =
+        k === "Escape" || k === "Backspace" || k === "BrowserBack" || k === "GoBack" || k === "Return" ||
+        code === 10009 || code === 461 || code === 27 || code === 8;
+
+      if (isBack){
+        e.preventDefault(); e.stopPropagation();
+        goBack();
+        return;
+      }
+
+      if (k === "Enter" || code === 13){
+        e.preventDefault(); e.stopPropagation();
+        $("toggle").click();
+        return;
+      }
+
+      if (k === "ArrowLeft" || code === 37){
+        e.preventDefault(); e.stopPropagation();
+        try{ v.currentTime = Math.max(0, (v.currentTime||0) - 10); }catch{}
+        return;
+      }
+
+      if (k === "ArrowRight" || code === 39){
+        e.preventDefault(); e.stopPropagation();
+        try{ v.currentTime = Math.min((v.duration||Infinity), (v.currentTime||0) + 10); }catch{}
+        return;
+      }
     });
-  } else {
-    video.src = url;
-  }
 
-  try{
-    await video.play();
-  }catch(e){
-    // Some TVs require user gesture. Press Enter to start.
-    console.warn(e);
-    toast("Press Enter to start playback.");
-  }
-}
-
-function togglePlay(){
-  const v = $("#video");
-  if (v.paused) v.play().catch(()=>toast("Cannot autoplay. Press Enter again."));
-  else v.pause();
-}
-
-function seekBy(delta){
-  const v = $("#video");
-  if (!isFinite(v.duration)) return;
-  v.currentTime = Math.max(0, Math.min(v.duration, (v.currentTime || 0) + delta));
-}
-
-function updateUI(){
-  const v = $("#video");
-  const dur = isFinite(v.duration) ? v.duration : 0;
-  const cur = isFinite(v.currentTime) ? v.currentTime : 0;
-
-  $("#time").textContent = `${fmt(cur)} / ${fmt(dur)}`;
-
-  const seek = $("#seek");
-  if (dur > 0){
-    seek.value = String(Math.floor((cur / dur) * 1000));
-  } else {
-    seek.value = "0";
-  }
-}
-
-function requestFullscreen(){
-  const el = $("#wrap");
-  const v = $("#video");
-  // Prefer fullscreen video element if supported
-  const target = v;
-  const req = target.requestFullscreen || target.webkitRequestFullscreen || el.requestFullscreen || el.webkitRequestFullscreen;
-  if (req) req.call(target);
-}
-
-function goBack(){
-  // Better for TV: go back to index
-  history.length > 1 ? history.back() : (location.href = "index.html");
-}
-
-/* Remote / keyboard */
-document.addEventListener("keydown", (e)=>{
-  const code = e.keyCode || e.which;
-  const key = e.key;
-
-  const isBack =
-    key === "Escape" || key === "Backspace" ||
-    code === 27 || code === 8 || code === 461 || code === 10009;
-
-  if (isBack){
-    e.preventDefault();
-    goBack();
-    return;
-  }
-
-  // prevent scrolling
-  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(key)) e.preventDefault();
-
-  if (key === "Enter" || code === 13){
-    e.preventDefault();
-    togglePlay();
-    return;
-  }
-  if (key === " " || code === 32){
-    e.preventDefault();
-    togglePlay();
-    return;
-  }
-  if (key === "ArrowLeft" || code === 37){
-    e.preventDefault();
-    seekBy(-10);
-    return;
-  }
-  if (key === "ArrowRight" || code === 39){
-    e.preventDefault();
-    seekBy(10);
-    return;
-  }
-  if (key === "ArrowUp" || code === 38){
-    e.preventDefault();
-    $("#bar").style.display = "block";
-    return;
-  }
-  if (key === "ArrowDown" || code === 40){
-    e.preventDefault();
-    $("#bar").style.display = "none";
-    return;
-  }
-}, {passive:false});
-
-/* Controls */
-$("#btnPlay").addEventListener("click", togglePlay);
-$("#btnBack").addEventListener("click", goBack);
-$("#btnFS").addEventListener("click", requestFullscreen);
-
-$("#seek").addEventListener("input", ()=>{
-  const v = $("#video");
-  if (!isFinite(v.duration) || v.duration <= 0) return;
-  const p = Number($("#seek").value) / 1000;
-  v.currentTime = v.duration * p;
-});
-
-/* Boot */
-(async function boot(){
-  try{
-    const { src, title } = await resolveSource();
-    $("#vTitle").textContent = title;
-    toast("Loading stream…");
-
-    await playUrl(src);
-
-    const v = $("#video");
-    v.addEventListener("timeupdate", updateUI);
-    v.addEventListener("durationchange", updateUI);
-    v.addEventListener("loadedmetadata", updateUI);
-    v.addEventListener("error", ()=>toast("Playback error (often CORS or unsupported format)."));
-
-    updateUI();
-  }catch(err){
-    console.error(err);
-    $("#vTitle").textContent = "Player error";
-    toast(String(err.message || err));
-  }
-})();
-</script>
+    // Boot
+    (async ()=>{
+      const sel = await loadSelection();
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(sel||{})); }catch{}
+      await playUrl(sel?.url, sel?.title, sel?.poster);
+    })();
+  </script>
 </body>
 </html>
+
