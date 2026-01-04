@@ -1,255 +1,306 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1" />
-  <title>STARTV</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>STARTV Player</title>
   <style>
-    body{margin:0;background:#000;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-    #boot{position:fixed;inset:0;display:grid;place-items:center}
-    #boot div{opacity:.85}
+    :root{
+      --bg:#000;
+      --glass:rgba(255,255,255,.08);
+      --stroke:rgba(255,255,255,.18);
+      --txt:rgba(255,255,255,.92);
+      --mut:rgba(255,255,255,.68);
+      --accent:#e50914;
+    }
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--txt); font-family:system-ui,Segoe UI,Arial}
+    .wrap{height:100%; display:grid; grid-template-rows:auto 1fr; }
+    .top{
+      position:sticky; top:0; z-index:10;
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      background:linear-gradient(180deg, rgba(0,0,0,.78), rgba(0,0,0,.20));
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .btn{
+      border:1px solid var(--stroke);
+      background:var(--glass);
+      color:var(--txt);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:800;
+      user-select:none;
+    }
+    .btn.primary{
+      border:0;
+      background:linear-gradient(135deg, var(--accent), #ff3340);
+    }
+    .title{
+      min-width:0;
+      font-weight:900;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      flex:1;
+    }
+    .hint{
+      font-size:12px;
+      color:var(--mut);
+      white-space:nowrap;
+    }
+
+    .player{
+      position:relative;
+      height:100%;
+      background:#000;
+    }
+    video{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      background:#000;
+      outline:none;
+    }
+
+    .msg{
+      position:fixed; left:12px; right:12px; bottom:12px;
+      padding:10px 12px; border-radius:12px;
+      background:rgba(0,0,0,.60);
+      border:1px solid rgba(255,255,255,.14);
+      font-size:14px; line-height:1.35;
+      backdrop-filter: blur(10px);
+    }
+    a{color:#8ab4ff}
   </style>
 </head>
 <body>
-  <div id="boot"><div>Loading STARTV…</div></div>
+  <div class="wrap">
+    <div class="top">
+      <button class="btn" id="backBtn" title="Back">← Back</button>
+      <div class="title" id="t">Loading…</div>
+      <button class="btn" id="openBtn" title="Open link in new tab">Open</button>
+      <button class="btn primary" id="retryBtn" title="Retry">Retry</button>
+      <div class="hint">Remote: ←/→ seek • Enter play/pause • Back to return</div>
+    </div>
 
-<script>
-(async () => {
-  const REMOTE_URL = "https://a860h040.github.io/TV/index3.html";
-  const BASE_URL   = "https://a860h040.github.io/TV/";
-
-  // Injected overlay + player + remote-navigation
-  const INJECT = `
-<style>
-  :focus{outline:3px solid #ff2a2a;outline-offset:2px;border-radius:10px}
-  #sysStatus{position:fixed;left:12px;top:12px;z-index:9998;
-    background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
-    padding:8px 10px;border-radius:12px;font-size:13px;opacity:.9}
-  #playerOverlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:none}
-  #playerOverlay.show{display:block}
-  #playerWrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-  #player{width:100%;height:100%;object-fit:contain;background:#000}
-  #controls{position:absolute;left:16px;right:16px;bottom:16px;display:flex;gap:10px;align-items:center;justify-content:center;opacity:.95}
-  .btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;
-       padding:10px 14px;border-radius:14px;font-size:16px}
-  .hint{position:absolute;left:16px;top:52px;opacity:.75;font-size:14px}
-</style>
-
-<div id="sysStatus">Ready</div>
-
-<div id="playerOverlay" aria-hidden="true">
-  <div class="hint">Remote: ◀▶ seek | OK play/pause | BACK close</div>
-  <div id="playerWrap">
-    <video id="player" controls></video>
-    <div id="controls">
-      <button class="btn" id="btnBack10" tabindex="0">-10s</button>
-      <button class="btn" id="btnPlay" tabindex="0">Play/Pause</button>
-      <button class="btn" id="btnFwd30" tabindex="0">+30s</button>
-      <button class="btn" id="btnClose" tabindex="0">Close</button>
+    <div class="player">
+      <video id="v" controls playsinline preload="auto"></video>
     </div>
   </div>
-</div>
 
-<script>
-(() => {
-  const statusEl = document.getElementById("sysStatus");
-  const overlay = document.getElementById("playerOverlay");
-  const video = document.getElementById("player");
-  const btnBack10 = document.getElementById("btnBack10");
-  const btnPlay = document.getElementById("btnPlay");
-  const btnFwd30 = document.getElementById("btnFwd30");
-  const btnClose = document.getElementById("btnClose");
+  <div class="msg" id="msg">Loading…</div>
 
-  let lastFocused = null;
+  <!-- HLS.js for .m3u8 on browsers without native HLS (may require CORS headers) -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- dash.js for .mpd (optional support; also requires CORS) -->
+  <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
 
-  const showStatus = (m) => { if(statusEl) statusEl.textContent = m; };
+  <script>
+    const v = document.getElementById("v");
+    const msg = document.getElementById("msg");
+    const t = document.getElementById("t");
+    const backBtn = document.getElementById("backBtn");
+    const openBtn = document.getElementById("openBtn");
+    const retryBtn = document.getElementById("retryBtn");
 
-  const isVideo = (u="") => /\.(m3u8|mp4|mkv|mpd|webm)(\\?|#|$)/i.test(String(u||""));
+    function setMsg(html){ msg.innerHTML = html; }
 
-  function openPlayer(url){
-    lastFocused = document.activeElement;
-    overlay.classList.add("show");
-    overlay.setAttribute("aria-hidden","false");
-    showStatus("Playing…");
+    function readPayload(){
+      const p = new URLSearchParams(location.search);
+      let src = p.get("src") || "";
+      let title = p.get("title") || "";
+      let poster = p.get("poster") || "";
 
-    video.src = url;
-    video.play().catch(() => showStatus("Press OK to Play/Pause"));
+      // Fallback to sessionStorage (handles extra-long URLs)
+      if (!src){
+        try{
+          const saved = JSON.parse(sessionStorage.getItem("STARTV_LAST_PLAY") || "null");
+          if (saved && saved.url){
+            src = saved.url || "";
+            title = title || saved.title || "";
+            poster = poster || saved.poster || "";
+          }
+        }catch{}
+      }
 
-    btnPlay.focus();
-  }
-  function closePlayer(){
-    try{ video.pause(); }catch(e){}
-    video.removeAttribute("src");
-    try{ video.load(); }catch(e){}
-
-    overlay.classList.remove("show");
-    overlay.setAttribute("aria-hidden","true");
-    showStatus("Ready");
-
-    if (lastFocused && lastFocused.focus) lastFocused.focus();
-  }
-  function togglePlay(){
-    if (video.paused) video.play().catch(()=>{});
-    else video.pause();
-  }
-  function seekBy(sec){
-    try { video.currentTime = Math.max(0, (video.currentTime||0) + sec); } catch(e){}
-  }
-
-  btnBack10.addEventListener("click", () => seekBy(-10));
-  btnFwd30.addEventListener("click", () => seekBy(+30));
-  btnPlay.addEventListener("click", togglePlay);
-  btnClose.addEventListener("click", closePlayer);
-
-  // Intercept <a href="video.*">
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest && e.target.closest("a");
-    if (!a) return;
-    const href = a.getAttribute("href") || a.href || "";
-    if (isVideo(href)) {
-      e.preventDefault();
-      e.stopPropagation();
-      openPlayer(href);
+      return { src, title, poster };
     }
-  }, true);
 
-  // Intercept window.open(video)
-  const _open = window.open;
-  window.open = function(url, ...rest){
-    if (isVideo(url)) { openPlayer(url); return null; }
-    return _open.call(window, url, ...rest);
-  };
+    function guessType(url){
+      const u = (url || "").toLowerCase();
+      if (u.includes(".m3u8")) return "hls";
+      if (u.includes(".mpd"))  return "dash";
+      if (u.match(/\.(mp4|webm)(\?|$)/)) return "file";
+      if (u.match(/\.(mkv)(\?|$)/)) return "mkv";
+      return "file";
+    }
 
-  // Keep things focusable (remote navigation)
-  function makeFocusable(root=document){
-    const els = root.querySelectorAll("a,button,input,select,textarea,[role='button'],[onclick]");
-    els.forEach(el => { if (!el.hasAttribute("tabindex")) el.tabIndex = 0; });
-  }
-  makeFocusable();
-  new MutationObserver(() => makeFocusable()).observe(document.documentElement, {subtree:true, childList:true});
+    function maybeHttps(url){
+      // GitHub Pages is HTTPS. If URL is http:// many browsers block it.
+      if (location.protocol === "https:" && url.startsWith("http://")){
+        return { tryUrl: url.replace(/^http:\/\//i, "https://"), original: url, swapped: true };
+      }
+      return { tryUrl: url, original: url, swapped: false };
+    }
 
-  // Simple spatial navigation for LG remote arrows
-  function focusables(){
-    const list = Array.from(document.querySelectorAll('[tabindex]:not([tabindex="-1"]),a,button,input,select,textarea'))
-      .filter(el => el && el.offsetParent !== null && !el.disabled);
-    return list;
-  }
-  function rectCenter(r){ return {x:r.left + r.width/2, y:r.top + r.height/2}; }
+    let hls = null;
+    let dash = null;
 
-  function moveFocus(dir){
-    const cur = document.activeElement;
-    const all = focusables();
-    if (!all.length) return;
+    function cleanup(){
+      try{
+        if (hls){ hls.destroy(); hls = null; }
+        if (dash){ dash.reset(); dash = null; }
+      }catch{}
+      try{ v.pause(); }catch{}
+      try{ v.removeAttribute("src"); v.load(); }catch{}
+    }
 
-    const curEl = (cur && all.includes(cur)) ? cur : all[0];
-    if (curEl !== document.activeElement) curEl.focus();
+    async function playUrl(rawUrl, title, poster){
+      cleanup();
 
-    const cr = curEl.getBoundingClientRect();
-    const c = rectCenter(cr);
+      t.textContent = title || "STARTV Player";
+      if (poster) v.setAttribute("poster", poster); else v.removeAttribute("poster");
 
-    let best = null;
-    let bestScore = Infinity;
+      if (!rawUrl){
+        setMsg("No video URL received. Go back and select a title again.");
+        return;
+      }
 
-    for (const el of all){
-      if (el === curEl) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) continue;
-      const p = rectCenter(r);
-      const dx = p.x - c.x;
-      const dy = p.y - c.y;
+      const { tryUrl, original, swapped } = maybeHttps(rawUrl);
+      const type = guessType(tryUrl);
 
-      let ok = false;
-      if (dir === "left")  ok = dx < -1;
-      if (dir === "right") ok = dx >  1;
-      if (dir === "up")    ok = dy < -1;
-      if (dir === "down")  ok = dy >  1;
-      if (!ok) continue;
+      openBtn.onclick = ()=> window.open(original, "_blank", "noopener");
+      retryBtn.onclick = ()=> playUrl(rawUrl, title, poster);
+      backBtn.onclick  = ()=> (history.length > 1 ? history.back() : (location.href = "./"));
 
-      const primary = (dir === "left" || dir === "right") ? Math.abs(dx) : Math.abs(dy);
-      const secondary = (dir === "left" || dir === "right") ? Math.abs(dy) : Math.abs(dx);
-      const score = primary + secondary * 0.35;
+      if (swapped){
+        setMsg(
+          `This site is <b>HTTPS</b> (GitHub Pages). Your link is <b>HTTP</b>, which is often blocked.<br>
+           I will try <b>HTTPS</b> automatically.<br>
+           Original: <a href="${original}" target="_blank" rel="noopener">open http link</a>`
+        );
+      } else {
+        setMsg(`Opening… <a href="${original}" target="_blank" rel="noopener">Open link</a>`);
+      }
 
-      if (score < bestScore){
-        bestScore = score;
-        best = el;
+      // MKV warning (many browsers/TVs won't play mkv in HTML5 video)
+      if (type === "mkv"){
+        setMsg(
+          `This looks like an <b>MKV</b> file. Many browsers/TV players can’t play MKV directly.<br>
+           Try the <b>Open</b> button (external player) or use an MP4/HLS link.`
+        );
+        // Still try (some TVs can)
+      }
+
+      // HLS
+      if (type === "hls"){
+        const canNative = v.canPlayType("application/vnd.apple.mpegurl");
+        if (canNative){
+          v.src = tryUrl;
+        } else if (window.Hls && Hls.isSupported()){
+          hls = new Hls({
+            // NOTE: hls.js needs CORS headers from the server because it fetches segments via XHR.
+            // If your server doesn't send Access-Control-Allow-Origin, playback may fail.
+          });
+          hls.loadSource(tryUrl);
+          hls.attachMedia(v);
+          hls.on(Hls.Events.ERROR, function(_, data){
+            setMsg(
+              `HLS error. This often means the server blocks CORS for playlist/segments.<br>
+               Try <b>Open</b> (external) or use a different stream URL.<br>
+               <small>${data && data.details ? data.details : ""}</small>`
+            );
+          });
+        } else {
+          setMsg("This browser/TV cannot play HLS (.m3u8) here. Try Open (external).");
+          return;
+        }
+      }
+
+      // DASH
+      else if (type === "dash"){
+        if (window.dashjs){
+          dash = dashjs.MediaPlayer().create();
+          dash.initialize(v, tryUrl, true);
+          dash.on("error", function(){
+            setMsg(
+              `DASH error. This often means the server blocks CORS for segments.<br>
+               Try <b>Open</b> (external) or use a different stream URL.`
+            );
+          });
+        } else {
+          setMsg("DASH player not available. Try Open (external).");
+          return;
+        }
+      }
+
+      // Regular file (mp4, webm, etc)
+      else {
+        v.src = tryUrl;
+      }
+
+      // Try autoplay (many TVs block autoplay unless muted)
+      try{
+        await v.play();
+        setMsg("Playing ✅");
+      }catch(e){
+        setMsg("Press Play (autoplay may be blocked on this device).");
       }
     }
-    if (best) best.focus();
-  }
 
-  document.addEventListener("keydown", (e) => {
-    const k = e.key;
-    const code = e.keyCode;
+    // Remote-friendly controls
+    document.addEventListener("keydown", (e)=>{
+      const key = e.key;
+      const code = e.keyCode || e.which;
 
-    // If player open: handle player keys only
-    if (overlay.classList.contains("show")) {
-      if (k === "Backspace" || k === "Escape" || code === 461) { e.preventDefault(); closePlayer(); return; }
-      if (k === "Enter") { e.preventDefault(); togglePlay(); return; }
-      if (k === "ArrowLeft") { e.preventDefault(); seekBy(-10); return; }
-      if (k === "ArrowRight") { e.preventDefault(); seekBy(+30); return; }
-      return;
-    }
+      const isBack =
+        key === "Escape" || key === "Backspace" || key === "BrowserBack" || key === "GoBack" ||
+        code === 27 || code === 8 || code === 461 || code === 10009;
 
-    // App navigation
-    if (k === "ArrowLeft")  { e.preventDefault(); moveFocus("left"); return; }
-    if (k === "ArrowRight") { e.preventDefault(); moveFocus("right"); return; }
-    if (k === "ArrowUp")    { e.preventDefault(); moveFocus("up"); return; }
-    if (k === "ArrowDown")  { e.preventDefault(); moveFocus("down"); return; }
+      if (isBack){
+        e.preventDefault(); e.stopPropagation();
+        backBtn.click();
+        return;
+      }
 
-    // BACK key: go back in page history
-    if (k === "Backspace" || k === "Escape" || code === 461) {
-      // let the page handle if it has its own back, otherwise history back
-      e.preventDefault();
-      history.back();
-      return;
-    }
+      // Enter toggles play/pause
+      if (key === "Enter" || code === 13){
+        e.preventDefault(); e.stopPropagation();
+        if (v.paused) v.play().catch(()=>{});
+        else v.pause();
+        return;
+      }
 
-    // OK key
-    if (k === "Enter") {
-      const a = document.activeElement;
-      if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return; // allow keyboard
-      if (a && a.click) { e.preventDefault(); a.click(); }
-    }
-  }, true);
+      const seek = (sec)=>{
+        try{
+          const t = Math.max(0, Math.min((v.duration || Infinity), (v.currentTime || 0) + sec));
+          v.currentTime = t;
+        }catch{}
+      };
 
-  // Small fetch error hint (does NOT print your username/password)
-  const _fetch = window.fetch;
-  window.fetch = async (...args) => {
-    try {
-      const res = await _fetch(...args);
-      return res;
-    } catch (err) {
-      showStatus("Network/API failed");
-      throw err;
-    }
-  };
+      if (key === "ArrowLeft" || code === 37){ e.preventDefault(); seek(-10); return; }
+      if (key === "ArrowRight"|| code === 39){ e.preventDefault(); seek( 10); return; }
+      if (key === "ArrowUp"   || code === 38){ e.preventDefault(); try{ v.volume = Math.min(1, (v.volume||0) + 0.08); }catch{} return; }
+      if (key === "ArrowDown" || code === 40){ e.preventDefault(); try{ v.volume = Math.max(0, (v.volume||0) - 0.08); }catch{} return; }
+    });
 
-})();
-<\/script>
-`;
+    // Errors
+    v.addEventListener("error", ()=>{
+      const e = v.error;
+      setMsg(
+        `Playback error.${e ? (" Code: " + e.code) : ""}<br>
+         Try <b>Open</b> (external) or your server may not support HTTPS/CORS.<br>`
+      );
+    });
 
-  const res = await fetch(REMOTE_URL, { cache: "no-store" });
-  const html = await res.text();
-
-  // Insert <base> + our injected overlay/script into the real HTML doc
-  let patched = html;
-
-  // Ensure base exists so relative assets still work
-  patched = patched.replace(/<head([^>]*)>/i, `<head$1><base href="${BASE_URL}">`);
-
-  // Inject our overlay + player + remote code before </body>
-  patched = patched.replace(/<\/body>/i, `${INJECT}</body>`);
-
-  // Render as the real document (keeps script order and modules from remote page)
-  document.open();
-  document.write(patched);
-  document.close();
-
-})().catch((e) => {
-  console.error(e);
-  document.body.innerHTML = "<div style='padding:16px'>Failed to load STARTV. Check internet/URL.</div>";
-});
-</script>
+    // Boot
+    const payload = readPayload();
+    playUrl(payload.src, payload.title, payload.poster);
+  </script>
 </body>
 </html>
+
 
