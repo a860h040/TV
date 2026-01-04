@@ -1,59 +1,1155 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Video Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STARTV — Browse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
-    html,body{height:100%; margin:0; background:#000; color:#fff; font-family:system-ui,Segoe UI,Arial}
-    .wrap{height:100%; display:grid; place-items:center}
-    video{width:100vw; height:100vh; object-fit:contain; background:#000}
-    .msg{
-      position:fixed; left:12px; right:12px; bottom:12px;
-      padding:10px 12px; border-radius:10px;
-      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
-      font-size:14px; line-height:1.35;
+    :root{
+      /* Base */
+      --bg:#04050a;
+      --bg2:#060717;
+      --glass:rgba(14,16,24,.62);
+      --glass2:rgba(12,14,22,.88);
+      --text:#f3f5ff;
+      --muted:rgba(243,245,255,.68);
+
+      /* Accent */
+      --accent:#e50914;
+      --accent2:#ff3340;
+      --glow:rgba(229,9,20,.35);
+
+      /* UI */
+      --border:rgba(255,255,255,.12);
+      --border2:rgba(255,255,255,.18);
+      --shadow:0 18px 60px rgba(0,0,0,.45);
+      --r:18px;
+      --r2:24px;
+
+      --focus: rgba(255,255,255,.95);
+      --focusGlow: 0 0 0 3px rgba(255,255,255,.35), 0 10px 40px rgba(229,9,20,.25);
     }
-    a{color:#8ab4ff}
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Poppins, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(229,9,20,.18), transparent 55%),
+        radial-gradient(1000px 700px at 85% 25%, rgba(125,78,255,.16), transparent 55%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
+    }
+
+    /* Topbar */
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      display:flex; gap:14px; align-items:center;
+      padding:14px 18px;
+      background:linear-gradient(180deg, rgba(4,5,10,.82), rgba(4,5,10,.45));
+      backdrop-filter: blur(12px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .logo{
+      display:flex; align-items:center; gap:10px;
+      font-weight:900; letter-spacing:.5px;
+      font-size:18px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .logo .dot{
+      width:12px; height:12px; border-radius:50%;
+      background:linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow:0 0 0 6px rgba(229,9,20,.15);
+    }
+
+    .chips{
+      display:flex; gap:8px; flex-wrap:wrap;
+      margin-left:6px;
+      align-items:center;
+    }
+    .chip{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.86);
+      padding:10px 12px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:12px;
+      cursor:pointer;
+      transition:.15s transform, .15s background, .15s border;
+      outline:none;
+    }
+    .chip:hover{transform:translateY(-1px)}
+    .chip.active{
+      background:rgba(229,9,20,.16);
+      border-color:rgba(229,9,20,.35);
+      box-shadow:0 12px 30px rgba(229,9,20,.18);
+    }
+    .chip:focus-visible{
+      box-shadow: var(--focusGlow);
+      border-color: rgba(255,255,255,.35);
+    }
+
+    .spacer{flex:1}
+
+    .searchWrap{
+      position:relative;
+      width:min(520px, 44vw);
+      min-width: 240px;
+    }
+    .search{
+      width:100%;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:12px 14px;
+      border-radius:999px;
+      outline:none;
+      font-weight:600;
+      box-shadow:0 10px 30px rgba(0,0,0,.22);
+    }
+    .search::placeholder{color:rgba(255,255,255,.45)}
+    .search:focus{
+      border-color:rgba(255,255,255,.28);
+      box-shadow:0 0 0 3px rgba(255,255,255,.12), 0 18px 55px rgba(0,0,0,.35);
+    }
+
+    .results{
+      position:absolute; left:0; right:0; top:52px;
+      background:rgba(12,14,22,.92);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:none;
+    }
+    .results.show{display:block}
+    .rItem{
+      display:flex; gap:12px; align-items:center;
+      padding:10px 12px;
+      cursor:pointer;
+      border-top:1px solid rgba(255,255,255,.06);
+      outline:none;
+    }
+    .rItem:first-child{border-top:0}
+    .rItem:hover{background:rgba(255,255,255,.06)}
+    .rItem:focus-visible{
+      background:rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.22);
+    }
+    .rThumb{
+      width:48px; height:64px; border-radius:10px;
+      background:#0b0e18;
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    .rThumb img{width:100%; height:100%; object-fit:cover; display:block}
+    .rMeta{min-width:0}
+    .rTitle{
+      font-weight:800; font-size:13px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .rSub{font-size:11px; color:rgba(255,255,255,.62)}
+
+    .avatar{
+      width:40px; height:40px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      display:grid; place-items:center;
+      font-weight:900;
+      user-select:none;
+    }
+
+    /* Hero */
+    .hero{
+      position:relative;
+      padding: 26px 18px 10px;
+    }
+    .heroCard{
+      position:relative;
+      border-radius: var(--r2);
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background: radial-gradient(1400px 700px at 20% 20%, rgba(229,9,20,.22), transparent 60%),
+                  linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow: var(--shadow);
+      min-height: 320px;
+    }
+    .heroBg{
+      position:absolute; inset:0;
+      opacity:.22;
+      background-size:cover;
+      background-position:center;
+      filter:saturate(1.15) contrast(1.05);
+      transform: scale(1.03);
+    }
+    .heroOverlay{
+      position:absolute; inset:0;
+      background:linear-gradient(90deg, rgba(4,5,10,.92) 0%, rgba(4,5,10,.62) 48%, rgba(4,5,10,.12) 100%),
+                 linear-gradient(180deg, rgba(4,5,10,.05) 0%, rgba(4,5,10,.72) 100%);
+    }
+    .heroInner{
+      position:relative;
+      padding: 28px 26px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      align-items:end;
+    }
+    .heroTitle{
+      font-size: 36px;
+      line-height: 1.05;
+      font-weight: 900;
+      letter-spacing:.3px;
+      margin:0 0 10px;
+    }
+    .heroMeta{
+      color: rgba(255,255,255,.74);
+      font-weight:700;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .heroDesc{
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 720px;
+      margin:0;
+    }
+    .heroBtns{
+      display:flex; flex-wrap:wrap; gap:10px;
+      margin-top: 18px;
+    }
+    .btn{
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight: 900;
+      letter-spacing:.2px;
+      transition:.15s transform, .15s filter;
+      outline:none;
+      user-select:none;
+      display:inline-flex; align-items:center; gap:10px;
+    }
+    .btn:hover{transform: translateY(-1px)}
+    .btn.primary{
+      border:0;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 18px 55px rgba(229,9,20,.22);
+    }
+    .btn:focus-visible{box-shadow: var(--focusGlow)}
+
+    .heroPoster{
+      justify-self:end;
+      width: min(260px, 40vw);
+      aspect-ratio: 2/3;
+      border-radius: 18px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.12);
+      background:#0b0e18;
+      box-shadow: 0 25px 80px rgba(0,0,0,.55);
+    }
+    .heroPoster img{width:100%; height:100%; object-fit:cover; display:block}
+
+    /* Rows */
+    .section{
+      padding: 10px 18px 26px;
+    }
+    .rowHead{
+      display:flex; align-items:end; justify-content:space-between;
+      gap:10px;
+      margin: 18px 0 10px;
+    }
+    .rowTitle{
+      margin:0;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing:.25px;
+    }
+    .rowHint{
+      color: rgba(255,255,255,.58);
+      font-size: 12px;
+      font-weight:700;
+    }
+
+    .rail{
+      display:flex; gap: 12px;
+      overflow:auto hidden;
+      padding: 6px 2px 10px;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.18) transparent;
+    }
+    .rail::-webkit-scrollbar{height:10px}
+    .rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18); border-radius:999px}
+    .rail::-webkit-scrollbar-track{background:transparent}
+
+    .card{
+      scroll-snap-align:start;
+      width: 150px;
+      flex: 0 0 auto;
+      border-radius: 16px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      box-shadow: 0 18px 55px rgba(0,0,0,.28);
+      cursor:pointer;
+      outline:none;
+      transition: .15s transform, .15s box-shadow, .15s border;
+      position:relative;
+    }
+    .card:hover{transform: translateY(-2px)}
+    .card:focus-visible{
+      transform: translateY(-2px) scale(1.03);
+      border-color: rgba(255,255,255,.35);
+      box-shadow: var(--focusGlow);
+    }
+    .poster{
+      aspect-ratio: 2/3;
+      background:#0b0e18;
+    }
+    .poster img{width:100%; height:100%; object-fit:cover; display:block}
+    .cBody{
+      padding: 10px 10px 11px;
+    }
+    .cTitle{
+      font-weight:900;
+      font-size: 12px;
+      margin:0 0 5px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .cSub{
+      font-size: 11px;
+      color: rgba(255,255,255,.64);
+      margin:0;
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .tag{
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      font-weight:800;
+      font-size:10px;
+      color: rgba(255,255,255,.78);
+    }
+    .badge{
+      position:absolute; top:10px; left:10px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.45);
+      border: 1px solid rgba(255,255,255,.14);
+      font-size: 10px;
+      font-weight: 900;
+      color: rgba(255,255,255,.92);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Modal */
+    .modal{
+      position:fixed; inset:0; z-index:100;
+      display:none;
+      background: rgba(0,0,0,.72);
+      backdrop-filter: blur(10px);
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .modal.show{display:flex}
+    .sheet{
+      width:min(980px, 96vw);
+      max-height:min(86vh, 860px);
+      overflow:hidden;
+      border-radius: 22px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(12,14,22,.92);
+      box-shadow: var(--shadow);
+      display:grid;
+      grid-template-columns: 320px 1fr;
+    }
+    .sheetLeft{
+      padding:16px;
+      border-right:1px solid rgba(255,255,255,.08);
+      display:grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap:10px;
+    }
+    .sheetPoster{
+      width:100%;
+      aspect-ratio: 2/3;
+      border-radius: 16px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.12);
+      background:#0b0e18;
+    }
+    .sheetPoster img{width:100%; height:100%; object-fit:cover; display:block}
+    .sheetTitle{margin:0; font-weight:900; font-size:18px; line-height:1.15}
+    .sheetDesc{margin:0; color:rgba(255,255,255,.72); font-size:12px; line-height:1.45}
+    .sheetActions{display:flex; gap:10px; flex-wrap:wrap}
+    .sheetRight{
+      padding:16px;
+      overflow:auto;
+    }
+    .epGrid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+    }
+    .ep{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      border-radius: 16px;
+      padding: 12px;
+      cursor:pointer;
+      outline:none;
+      transition:.15s transform, .15s border, .15s box-shadow;
+    }
+    .ep:hover{transform: translateY(-1px)}
+    .ep:focus-visible{
+      border-color: rgba(255,255,255,.35);
+      box-shadow: var(--focusGlow);
+    }
+    .epT{margin:0 0 6px; font-weight:900; font-size:12px}
+    .epS{margin:0; color:rgba(255,255,255,.66); font-size:11px}
+
+    .toast{
+      position: fixed;
+      left: 14px; right: 14px; bottom: 14px;
+      z-index: 120;
+      display:none;
+    }
+    .toast.show{display:block}
+    .toastInner{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: rgba(255,255,255,.86);
+      font-size: 13px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    }
+
+    @media (max-width: 820px){
+      .heroInner{grid-template-columns: 1fr; align-items:start}
+      .heroPoster{justify-self:start; width: 180px}
+      .sheet{grid-template-columns: 1fr}
+      .sheetLeft{border-right:0; border-bottom:1px solid rgba(255,255,255,.08)}
+    }
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <video id="v" controls playsinline preload="auto">
-      <source src="http://line.tx-4k.com/series/b126a24d3f/36a7e66d5d43/1944627.mp4" type="video/mp4" />
-      Your browser does not support HTML5 video.
-    </video>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="logo" tabindex="0" data-nav="top">
+      <span class="dot"></span>
+      <span>STARTV</span>
+    </div>
+
+    <div class="chips" id="chips"></div>
+
+    <div class="spacer"></div>
+
+    <div class="searchWrap">
+      <input id="search" class="search" type="text" placeholder="Search movies & series…" autocomplete="off" />
+      <div id="results" class="results" role="listbox" aria-label="Search results"></div>
+    </div>
+
+    <div class="avatar" tabindex="0" data-nav="top" title="Profile">S</div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="heroCard">
+      <div class="heroBg" id="heroBg"></div>
+      <div class="heroOverlay"></div>
+      <div class="heroInner">
+        <div>
+          <h1 class="heroTitle" id="heroTitle">Loading…</h1>
+          <div class="heroMeta" id="heroMeta"></div>
+          <p class="heroDesc" id="heroDesc"></p>
+
+          <div class="heroBtns">
+            <button class="btn primary" id="heroPlay" type="button" tabindex="0" data-nav="hero">
+              ▶ Play
+            </button>
+            <button class="btn" id="heroDetails" type="button" tabindex="0" data-nav="hero">
+              ℹ Details
+            </button>
+          </div>
+        </div>
+
+        <div class="heroPoster">
+          <img id="heroPoster" alt="poster" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rows -->
+  <main class="section" id="rows"></main>
+
+  <!-- Series / Details Modal -->
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
+      <div class="sheetLeft">
+        <div class="sheetPoster"><img id="mPoster" alt="poster"></div>
+        <h2 class="sheetTitle" id="mTitle">Title</h2>
+        <p class="sheetDesc" id="mDesc">Description</p>
+        <div class="sheetActions">
+          <button class="btn primary" id="mPlay" type="button" tabindex="0">▶ Play</button>
+          <button class="btn" id="mClose" type="button" tabindex="0">✕ Close</button>
+        </div>
+        <div style="color:rgba(255,255,255,.55); font-size:12px; font-weight:700;">
+          Remote: ↑↓←→ to move • Enter to select • Back/Esc to close
+        </div>
+      </div>
+
+      <div class="sheetRight">
+        <div id="mEpisodesWrap" style="display:none">
+          <h3 style="margin:0 0 10px; font-weight:900; font-size:14px;">Episodes</h3>
+          <div class="epGrid" id="mEpisodes"></div>
+        </div>
+
+        <div id="mInfo" style="color:rgba(255,255,255,.75); font-size:13px; line-height:1.5;">
+          Select <b>Play</b> to start, or choose an episode (for series).
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="msg" id="msg">Loading…</div>
+  <!-- Toast -->
+  <div class="toast" id="toast" aria-live="polite">
+    <div class="toastInner" id="toastInner"></div>
+  </div>
 
-  <script>
-    const url = "http://line.tx-4k.com/series/b126a24d3f/36a7e66d5d43/1944627.mp4";
-    const v = document.getElementById("v");
-    const msg = document.getElementById("msg");
+<script>
+/* =========================
+   1) SAMPLE CATALOG (LEGAL)
+   Replace these with your own links you own/have rights to.
+   ========================= */
+const CATALOG = [
+  {
+    id: "sintel",
+    type: "movie",
+    title: "Sintel (Open Movie)",
+    year: "2010",
+    genres: ["Animation", "Adventure"],
+    quality: "1080p",
+    poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Sintel_poster.jpg/640px-Sintel_poster.jpg",
+    hero: true,
+    description: "A short film by the Blender Institute. Publicly available / open licensed.",
+    src: "https://download.blender.org/durian/trailer/sintel_trailer-1080p.mp4"
+  },
+  {
+    id: "tears",
+    type: "movie",
+    title: "Tears of Steel (Open Movie)",
+    year: "2012",
+    genres: ["Sci-Fi", "Action"],
+    quality: "1080p",
+    poster: "https://mango.blender.org/wp-content/uploads/2013/05/Tears-of-Steel-Poster-web.jpg",
+    description: "Open movie by Blender Institute. Publicly available / open licensed.",
+    src: "https://download.blender.org/durian/trailer/tears_of_steel_720p.mov"
+  },
+  {
+    id: "bigbuckbunny",
+    type: "movie",
+    title: "Big Buck Bunny (Open Movie)",
+    year: "2008",
+    genres: ["Animation", "Comedy"],
+    quality: "1080p",
+    poster: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/640px-Big_buck_bunny_poster_big.jpg",
+    description: "Open movie by Blender Institute. Publicly available / open licensed.",
+    src: "https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"
+  },
+  {
+    id: "demo-series",
+    type: "series",
+    title: "Demo Series (Your Episodes)",
+    year: "2026",
+    genres: ["Drama"],
+    quality: "HD",
+    poster: "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=800&q=60",
+    description: "Example series structure. Replace episode URLs with your own content.",
+    episodes: [
+      { title: "Episode 1 — Pilot", note: "25m", src: "https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4" },
+      { title: "Episode 2 — The Turn", note: "28m", src: "https://download.blender.org/durian/trailer/tears_of_steel_720p.mov" }
+    ]
+  }
+];
 
-    function setMsg(t){ msg.innerHTML = t; }
+/* =========================
+   2) UI STATE
+   ========================= */
+const state = {
+  filter: "All",
+  heroItem: null,
+  items: [],
+};
 
-    // If you open this page over HTTPS, most browsers will BLOCK http:// video (mixed content).
-    if (location.protocol === "https:" && url.startsWith("http://")) {
-      setMsg(`Blocked by browser (mixed content): this page is HTTPS but the video is HTTP.<br>
-              Open this HTML via <b>file://</b> or <b>http://</b>, or use an HTTPS version of the video URL if available.<br>
-              Video link: <a href="${url}" target="_blank" rel="noopener">Open video</a>`);
+const CHIP_LIST = ["All", "Movies", "Series", "Animation", "Action", "Drama", "Sci-Fi", "Comedy"];
+
+/* =========================
+   3) HELPERS
+   ========================= */
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+function toast(msg){
+  const t = $("#toast");
+  $("#toastInner").innerHTML = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+
+function normalize(str){
+  return (str||"").toLowerCase().trim();
+}
+
+/* =========================
+   4) PLAYER NAVIGATION
+   ========================= */
+/* Opens player.html (Page 2) */
+function openPlayer(url, title, poster){
+  if (!url) return;
+
+  const payload = { url, title: title || "Playing…", poster: poster || "" };
+  try { sessionStorage.setItem("STARTV_LAST_PLAY", JSON.stringify(payload)); } catch {}
+
+  const qs = new URLSearchParams({
+    src: url,
+    title: payload.title,
+    poster: payload.poster
+  });
+
+  location.href = `player.html?${qs.toString()}`;
+}
+
+/* =========================
+   5) BUILD TOP CHIPS
+   ========================= */
+function buildChips(){
+  const wrap = $("#chips");
+  wrap.innerHTML = "";
+  CHIP_LIST.forEach(name=>{
+    const b = document.createElement("button");
+    b.className = "chip" + (name === state.filter ? " active" : "");
+    b.textContent = name;
+    b.type = "button";
+    b.tabIndex = 0;
+    b.addEventListener("click", ()=>{
+      state.filter = name;
+      buildChips();
+      renderRows();
+      toast(`Filter: <b>${name}</b>`);
+    });
+    wrap.appendChild(b);
+  });
+}
+
+/* =========================
+   6) HERO
+   ========================= */
+function pickHero(){
+  const hero = state.items.find(x=>x.hero) || state.items[0];
+  state.heroItem = hero;
+  $("#heroTitle").textContent = hero?.title || "STARTV";
+  $("#heroMeta").textContent = [
+    hero?.year ? hero.year : "",
+    hero?.type ? (hero.type === "movie" ? "Movie" : "Series") : "",
+    hero?.quality ? hero.quality : "",
+    (hero?.genres||[]).slice(0,2).join(" • ")
+  ].filter(Boolean).join(" • ");
+
+  $("#heroDesc").textContent = hero?.description || "";
+  $("#heroPoster").src = hero?.poster || "";
+  $("#heroBg").style.backgroundImage = hero?.poster ? `url('${hero.poster}')` : "none";
+
+  $("#heroPlay").onclick = ()=>{
+    if (!hero) return;
+    if (hero.type === "series"){
+      const ep = hero.episodes?.[0];
+      if (ep?.src) openPlayer(ep.src, `${hero.title} — ${ep.title}`, hero.poster);
+      else toast("No episodes found.");
     } else {
-      setMsg(`Video ready. <a href="${url}" target="_blank" rel="noopener">Open video in new tab</a>`);
+      openPlayer(hero.src, hero.title, hero.poster);
     }
+  };
 
-    v.addEventListener("loadedmetadata", () => setMsg("Loaded metadata. Press Play (or use autoplay in code)."));
-    v.addEventListener("playing", () => setMsg("Playing ✅"));
-    v.addEventListener("pause", () => setMsg("Paused ⏸️"));
-    v.addEventListener("error", () => {
-      const e = v.error;
-      setMsg(`Playback error. ${e ? ("Code: " + e.code) : ""}<br>
-              Try opening the video link directly: <a href="${url}" target="_blank" rel="noopener">Open video</a>`);
+  $("#heroDetails").onclick = ()=> openDetails(hero);
+}
+
+/* =========================
+   7) ROW RENDERING
+   ========================= */
+function passesFilter(item){
+  const f = state.filter;
+
+  if (f === "All") return true;
+  if (f === "Movies") return item.type === "movie";
+  if (f === "Series") return item.type === "series";
+
+  // Genre filter
+  const genres = (item.genres || []).map(g=>normalize(g));
+  return genres.includes(normalize(f));
+}
+
+function groupRows(items){
+  // Build 3–5 meaningful rows
+  const movies = items.filter(x=>x.type==="movie");
+  const series = items.filter(x=>x.type==="series");
+
+  const rows = [];
+
+  rows.push({ title: "Featured", hint: "Pick something to watch", items: items.slice(0, 12) });
+
+  if (movies.length) rows.push({ title: "Movies", hint: "Action • Animation • More", items: movies.slice(0, 18) });
+  if (series.length) rows.push({ title: "Series", hint: "Select a show → pick an episode", items: series.slice(0, 18) });
+
+  // Genre based rows (from catalog)
+  const allGenres = new Set();
+  items.forEach(it => (it.genres||[]).forEach(g=>allGenres.add(g)));
+  const genreList = Array.from(allGenres).slice(0, 3);
+
+  genreList.forEach(gn=>{
+    const gi = items.filter(it => (it.genres||[]).includes(gn));
+    if (gi.length) rows.push({ title: gn, hint: "Genre row", items: gi.slice(0, 18) });
+  });
+
+  return rows;
+}
+
+function renderRows(){
+  const mount = $("#rows");
+  const filtered = state.items.filter(passesFilter);
+  const rows = groupRows(filtered);
+
+  mount.innerHTML = "";
+  rows.forEach((row, rowIndex)=>{
+    const wrap = document.createElement("section");
+
+    const head = document.createElement("div");
+    head.className = "rowHead";
+    head.innerHTML = `<h2 class="rowTitle">${row.title}</h2><div class="rowHint">${row.hint}</div>`;
+    wrap.appendChild(head);
+
+    const rail = document.createElement("div");
+    rail.className = "rail";
+    rail.dataset.rail = "1";
+    rail.dataset.row = String(rowIndex);
+
+    row.items.forEach((it, colIndex)=>{
+      const btn = document.createElement("button");
+      btn.className = "card";
+      btn.type = "button";
+      btn.tabIndex = 0;
+
+      // For remote navigation
+      btn.dataset.nav = "card";
+      btn.dataset.row = String(rowIndex);
+      btn.dataset.col = String(colIndex);
+
+      const badge = it.type === "series" ? "Series" : "Movie";
+
+      btn.innerHTML = `
+        <div class="badge">${badge}</div>
+        <div class="poster"><img alt="" src="${it.poster || ""}"></div>
+        <div class="cBody">
+          <p class="cTitle">${it.title}</p>
+          <p class="cSub">
+            <span class="tag">${it.year || "—"}</span>
+            <span class="tag">${it.quality || "HD"}</span>
+          </p>
+        </div>
+      `;
+
+      btn.addEventListener("click", ()=>{
+        if (it.type === "series") openDetails(it);
+        else openPlayer(it.src, it.title, it.poster);
+      });
+
+      rail.appendChild(btn);
     });
 
-    // Optional autoplay attempt (some TVs/browsers block autoplay with sound)
-    // v.muted = true; v.play().catch(()=>{});
-  </script>
+    wrap.appendChild(rail);
+    mount.appendChild(wrap);
+  });
+
+  // After re-render, refresh navigation map
+  buildNavMap();
+}
+
+/* =========================
+   8) DETAILS / SERIES MODAL
+   ========================= */
+let modalItem = null;
+
+function openDetails(item){
+  modalItem = item;
+  $("#modal").classList.add("show");
+  $("#modal").setAttribute("aria-hidden", "false");
+
+  $("#mPoster").src = item.poster || "";
+  $("#mTitle").textContent = item.title || "";
+  $("#mDesc").textContent = item.description || "";
+
+  const isSeries = item.type === "series";
+  const epsWrap = $("#mEpisodesWrap");
+  const epsGrid = $("#mEpisodes");
+  const info = $("#mInfo");
+
+  epsGrid.innerHTML = "";
+
+  if (isSeries && Array.isArray(item.episodes) && item.episodes.length){
+    epsWrap.style.display = "block";
+    info.style.display = "none";
+
+    item.episodes.forEach((ep, i)=>{
+      const b = document.createElement("button");
+      b.className = "ep";
+      b.type = "button";
+      b.tabIndex = 0;
+      b.dataset.nav = "modal";
+      b.dataset.mrow = "0";
+      b.dataset.mcol = String(i);
+
+      b.innerHTML = `
+        <p class="epT">${ep.title || ("Episode " + (i+1))}</p>
+        <p class="epS">${ep.note || ""}</p>
+      `;
+      b.addEventListener("click", ()=>{
+        closeModal();
+        openPlayer(ep.src, `${item.title} — ${ep.title}`, item.poster);
+      });
+      epsGrid.appendChild(b);
+    });
+
+    $("#mPlay").onclick = ()=>{
+      const ep0 = item.episodes[0];
+      if (ep0?.src){
+        closeModal();
+        openPlayer(ep0.src, `${item.title} — ${ep0.title}`, item.poster);
+      }
+    };
+
+  } else {
+    epsWrap.style.display = "none";
+    info.style.display = "block";
+
+    $("#mPlay").onclick = ()=>{
+      closeModal();
+      openPlayer(item.src, item.title, item.poster);
+    };
+  }
+
+  $("#mClose").onclick = closeModal;
+
+  // Focus first control in modal
+  setTimeout(()=> $("#mPlay").focus(), 0);
+
+  buildNavMap(); // rebuild focus map including modal
+}
+
+function closeModal(){
+  $("#modal").classList.remove("show");
+  $("#modal").setAttribute("aria-hidden", "true");
+  modalItem = null;
+  buildNavMap();
+}
+
+/* Click outside to close */
+$("#modal").addEventListener("click", (e)=>{
+  if (e.target === $("#modal")) closeModal();
+});
+
+/* =========================
+   9) SEARCH
+   ========================= */
+const searchEl = $("#search");
+const resultsEl = $("#results");
+
+function updateSearch(){
+  const q = normalize(searchEl.value);
+  if (!q){
+    resultsEl.classList.remove("show");
+    resultsEl.innerHTML = "";
+    return;
+  }
+
+  const matches = state.items
+    .filter(it => normalize(it.title).includes(q))
+    .slice(0, 10);
+
+  resultsEl.innerHTML = "";
+
+  if (!matches.length){
+    const div = document.createElement("div");
+    div.className = "rItem";
+    div.tabIndex = 0;
+    div.textContent = "No results found";
+    resultsEl.appendChild(div);
+    resultsEl.classList.add("show");
+    return;
+  }
+
+  matches.forEach((it, idx)=>{
+    const div = document.createElement("div");
+    div.className = "rItem";
+    div.tabIndex = 0;
+    div.dataset.nav = "result";
+    div.dataset.rindex = String(idx);
+
+    div.innerHTML = `
+      <div class="rThumb"><img alt="" src="${it.poster || ""}"></div>
+      <div class="rMeta">
+        <div class="rTitle">${it.title}</div>
+        <div class="rSub">${it.type === "series" ? "Series" : "Movie"} • ${(it.genres||[]).slice(0,2).join(" • ")}</div>
+      </div>
+    `;
+    div.addEventListener("click", ()=>{
+      resultsEl.classList.remove("show");
+      searchEl.blur();
+      if (it.type === "series") openDetails(it);
+      else openPlayer(it.src, it.title, it.poster);
+    });
+
+    resultsEl.appendChild(div);
+  });
+
+  resultsEl.classList.add("show");
+  buildNavMap();
+}
+
+searchEl.addEventListener("input", updateSearch);
+searchEl.addEventListener("focus", updateSearch);
+
+document.addEventListener("click", (e)=>{
+  const inSearch = e.target === searchEl || resultsEl.contains(e.target);
+  if (!inSearch){
+    resultsEl.classList.remove("show");
+  }
+});
+
+/* =========================
+   10) REMOTE / KEYBOARD NAV
+   ========================= */
+let nav = {
+  cards: [],
+  cardByRowCol: new Map(),
+  results: [],
+  modalButtons: []
+};
+
+function keyOf(row, col){ return `${row}:${col}`; }
+
+function buildNavMap(){
+  nav.cards = $$(".card[data-nav='card']");
+  nav.cardByRowCol.clear();
+  nav.cards.forEach(el=>{
+    nav.cardByRowCol.set(keyOf(el.dataset.row, el.dataset.col), el);
+  });
+
+  nav.results = $$(".rItem[data-nav='result']");
+  nav.modalButtons = $$("#modal.show [data-nav='modal']");
+}
+
+function scrollIntoViewNice(el){
+  try{
+    el.scrollIntoView({behavior:"smooth", block:"nearest", inline:"nearest"});
+  }catch{}
+}
+
+function focusCard(row, col){
+  const target = nav.cardByRowCol.get(keyOf(String(row), String(col)));
+  if (target){
+    target.focus();
+    // keep the rail horizontally aligned
+    scrollIntoViewNice(target);
+    return true;
+  }
+  return false;
+}
+
+function getNearestCardInRow(row, preferredCol){
+  // find best match in row if exact col missing
+  const rowCards = nav.cards.filter(x => x.dataset.row === String(row));
+  if (!rowCards.length) return null;
+  const cols = rowCards.map(x => Number(x.dataset.col)).sort((a,b)=>a-b);
+  let best = cols[0];
+  let bestDist = Math.abs(best - preferredCol);
+  for (const c of cols){
+    const d = Math.abs(c - preferredCol);
+    if (d < bestDist){ best = c; bestDist = d; }
+  }
+  return nav.cardByRowCol.get(keyOf(String(row), String(best))) || null;
+}
+
+function handleNavKey(e){
+  const key = e.key;
+  const code = e.keyCode || e.which;
+
+  const isBack =
+    key === "Escape" || key === "Backspace" || key === "BrowserBack" || key === "GoBack" ||
+    code === 27 || code === 8 || code === 461 || code === 10009;
+
+  // If modal open:
+  if ($("#modal").classList.contains("show")){
+    if (isBack){
+      e.preventDefault();
+      closeModal();
+      return;
+    }
+    // Default focus navigation inside modal is browser-based; we only help with Enter
+    if (key === "Enter" || code === 13){
+      const a = document.activeElement;
+      if (a && typeof a.click === "function"){
+        e.preventDefault();
+        a.click();
+      }
+      return;
+    }
+    return;
+  }
+
+  // If search dropdown open and focused on results:
+  if (resultsEl.classList.contains("show")){
+    const active = document.activeElement;
+    const idx = nav.results.indexOf(active);
+
+    if (isBack){
+      e.preventDefault();
+      resultsEl.classList.remove("show");
+      searchEl.blur();
+      return;
+    }
+
+    if ((key === "ArrowDown" || code === 40) && nav.results.length){
+      e.preventDefault();
+      (nav.results[Math.min(nav.results.length-1, idx < 0 ? 0 : idx+1)]).focus();
+      return;
+    }
+    if ((key === "ArrowUp" || code === 38) && nav.results.length){
+      e.preventDefault();
+      if (idx <= 0) searchEl.focus();
+      else nav.results[idx-1].focus();
+      return;
+    }
+    if (key === "Enter" || code === 13){
+      const a = document.activeElement;
+      if (a && typeof a.click === "function"){
+        e.preventDefault();
+        a.click();
+      }
+      return;
+    }
+  }
+
+  // Global back: from search, close results
+  if (isBack && resultsEl.classList.contains("show")){
+    e.preventDefault();
+    resultsEl.classList.remove("show");
+    searchEl.blur();
+    return;
+  }
+
+  // Card navigation
+  const active = document.activeElement;
+  const isCard = active && active.dataset && active.dataset.nav === "card";
+  if (!isCard){
+    // If nothing focused, focus first card
+    if (key.startsWith("Arrow") || code === 37 || code === 38 || code === 39 || code === 40){
+      const first = nav.cards[0];
+      if (first){
+        e.preventDefault();
+        first.focus();
+        scrollIntoViewNice(first);
+      }
+    }
+    return;
+  }
+
+  const row = Number(active.dataset.row);
+  const col = Number(active.dataset.col);
+
+  if (key === "Enter" || code === 13){
+    e.preventDefault();
+    active.click();
+    return;
+  }
+
+  if (key === "ArrowLeft" || code === 37){
+    e.preventDefault();
+    if (!focusCard(row, col-1)){
+      // scroll a bit if at start
+      scrollIntoViewNice(active);
+    }
+    return;
+  }
+  if (key === "ArrowRight" || code === 39){
+    e.preventDefault();
+    focusCard(row, col+1);
+    return;
+  }
+  if (key === "ArrowUp" || code === 38){
+    e.preventDefault();
+    const up = getNearestCardInRow(row-1, col);
+    if (up){ up.focus(); scrollIntoViewNice(up); }
+    else {
+      // if no row above, go to hero play
+      $("#heroPlay").focus();
+      scrollIntoViewNice($("#heroPlay"));
+    }
+    return;
+  }
+  if (key === "ArrowDown" || code === 40){
+    e.preventDefault();
+    const down = getNearestCardInRow(row+1, col);
+    if (down){ down.focus(); scrollIntoViewNice(down); }
+    return;
+  }
+}
+
+document.addEventListener("keydown", handleNavKey, {passive:false});
+
+/* Prevent arrow keys from scrolling the page (TV browsers) */
+window.addEventListener("keydown", (e)=>{
+  const keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
+  if (keys.includes(e.key)) e.preventDefault();
+}, {passive:false});
+
+/* =========================
+   11) BOOT
+   ========================= */
+function boot(){
+  state.items = CATALOG.slice();
+
+  buildChips();
+  pickHero();
+  renderRows();
+  buildNavMap();
+
+  toast("Tip: Use your TV remote arrows + Enter to play.");
+}
+
+boot();
+</script>
 </body>
 </html>
