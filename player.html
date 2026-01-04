@@ -1,306 +1,332 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>STARTV Player</title>
-  <style>
-    :root{
-      --bg:#000;
-      --glass:rgba(255,255,255,.08);
-      --stroke:rgba(255,255,255,.18);
-      --txt:rgba(255,255,255,.92);
-      --mut:rgba(255,255,255,.68);
-      --accent:#e50914;
-    }
-    html,body{height:100%; margin:0; background:var(--bg); color:var(--txt); font-family:system-ui,Segoe UI,Arial}
-    .wrap{height:100%; display:grid; grid-template-rows:auto 1fr; }
-    .top{
-      position:sticky; top:0; z-index:10;
-      display:flex; align-items:center; gap:10px;
-      padding:10px 12px;
-      background:linear-gradient(180deg, rgba(0,0,0,.78), rgba(0,0,0,.20));
-      backdrop-filter: blur(10px);
-      border-bottom:1px solid rgba(255,255,255,.08);
-    }
-    .btn{
-      border:1px solid var(--stroke);
-      background:var(--glass);
-      color:var(--txt);
-      padding:10px 12px;
-      border-radius:12px;
-      cursor:pointer;
-      font-weight:800;
-      user-select:none;
-    }
-    .btn.primary{
-      border:0;
-      background:linear-gradient(135deg, var(--accent), #ff3340);
-    }
-    .title{
-      min-width:0;
-      font-weight:900;
-      letter-spacing:.2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      flex:1;
-    }
-    .hint{
-      font-size:12px;
-      color:var(--mut);
-      white-space:nowrap;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>STARTV — Player</title>
 
-    .player{
-      position:relative;
-      height:100%;
-      background:#000;
-    }
-    video{
-      width:100%;
-      height:100%;
-      object-fit:contain;
-      background:#000;
-      outline:none;
-    }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
 
-    .msg{
-      position:fixed; left:12px; right:12px; bottom:12px;
-      padding:10px 12px; border-radius:12px;
-      background:rgba(0,0,0,.60);
-      border:1px solid rgba(255,255,255,.14);
-      font-size:14px; line-height:1.35;
-      backdrop-filter: blur(10px);
-    }
-    a{color:#8ab4ff}
-  </style>
+<style>
+  :root{
+    --bg:#04050a;
+    --text:#f3f5ff;
+    --muted:rgba(243,245,255,.72);
+    --accent:#e50914;
+    --panel:rgba(0,0,0,.55);
+    --border:rgba(255,255,255,.16);
+    --focusGlow:0 0 0 3px rgba(255,255,255,.35), 0 10px 40px rgba(229,9,20,.25);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:Poppins, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
+  .wrap{position:fixed; inset:0; display:grid; grid-template-rows: 1fr auto;}
+  video{width:100%; height:100%; background:black; object-fit:contain;}
+  .bar{
+    position:relative;
+    padding:10px 12px;
+    background:linear-gradient(180deg, rgba(0,0,0,.10), var(--panel));
+    border-top:1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(10px);
+  }
+  .topline{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;}
+  .title{font-weight:900; font-size:13px; color:rgba(255,255,255,.92); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .hint{font-size:12px; color:rgba(255,255,255,.58); font-weight:800;}
+  .controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  button{
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:14px;
+    font-weight:900;
+    cursor:pointer;
+    outline:none;
+  }
+  button:focus-visible{box-shadow:var(--focusGlow)}
+  .primary{border:0; background:linear-gradient(135deg, var(--accent), #ff3340);}
+  .range{
+    flex:1;
+    min-width: 180px;
+    display:flex; align-items:center; gap:10px;
+  }
+  input[type="range"]{width:100%}
+  .time{font-size:12px; color:rgba(255,255,255,.75); font-weight:800; min-width:110px; text-align:right;}
+  .toast{
+    position:fixed; left:14px; right:14px; bottom:90px;
+    display:none; z-index:10;
+  }
+  .toast.show{display:block}
+  .toastInner{
+    max-width:980px; margin:0 auto;
+    padding:12px 14px; border-radius:16px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.55);
+    backdrop-filter: blur(10px);
+    box-shadow:0 18px 60px rgba(0,0,0,.35);
+    color:rgba(255,255,255,.86);
+    font-size:13px;
+  }
+  .hiddenBar .bar{display:none}
+</style>
 </head>
+
 <body>
-  <div class="wrap">
-    <div class="top">
-      <button class="btn" id="backBtn" title="Back">← Back</button>
-      <div class="title" id="t">Loading…</div>
-      <button class="btn" id="openBtn" title="Open link in new tab">Open</button>
-      <button class="btn primary" id="retryBtn" title="Retry">Retry</button>
-      <div class="hint">Remote: ←/→ seek • Enter play/pause • Back to return</div>
+<div class="wrap" id="wrap">
+  <video id="video" playsinline></video>
+
+  <div class="bar" id="bar">
+    <div class="topline">
+      <div class="title" id="vTitle">Loading…</div>
+      <div class="hint">Enter: Play/Pause • ←/→ Seek • Back: Return</div>
     </div>
 
-    <div class="player">
-      <video id="v" controls playsinline preload="auto"></video>
+    <div class="controls">
+      <button class="primary" id="btnPlay" type="button">▶ / ❚❚</button>
+      <button id="btnBack" type="button">⟵ Back</button>
+      <button id="btnFS" type="button">⛶ Fullscreen</button>
+
+      <div class="range">
+        <input id="seek" type="range" min="0" max="1000" value="0" />
+        <div class="time" id="time">00:00 / 00:00</div>
+      </div>
     </div>
   </div>
+</div>
 
-  <div class="msg" id="msg">Loading…</div>
+<div class="toast" id="toast"><div class="toastInner" id="toastInner"></div></div>
 
-  <!-- HLS.js for .m3u8 on browsers without native HLS (may require CORS headers) -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <!-- dash.js for .mpd (optional support; also requires CORS) -->
-  <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
+<!-- HLS.js fallback (only used if needed) -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
 
-  <script>
-    const v = document.getElementById("v");
-    const msg = document.getElementById("msg");
-    const t = document.getElementById("t");
-    const backBtn = document.getElementById("backBtn");
-    const openBtn = document.getElementById("openBtn");
-    const retryBtn = document.getElementById("retryBtn");
+<script>
+const $ = s => document.querySelector(s);
 
-    function setMsg(html){ msg.innerHTML = html; }
+function toast(msg){
+  const t = $("#toast");
+  $("#toastInner").innerHTML = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove("show"), 2400);
+}
+function normalize(s){ return (s||"").toLowerCase().trim(); }
 
-    function readPayload(){
-      const p = new URLSearchParams(location.search);
-      let src = p.get("src") || "";
-      let title = p.get("title") || "";
-      let poster = p.get("poster") || "";
+function fmt(sec){
+  sec = Math.max(0, Math.floor(sec || 0));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${String(h)}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
 
-      // Fallback to sessionStorage (handles extra-long URLs)
-      if (!src){
-        try{
-          const saved = JSON.parse(sessionStorage.getItem("STARTV_LAST_PLAY") || "null");
-          if (saved && saved.url){
-            src = saved.url || "";
-            title = title || saved.title || "";
-            poster = poster || saved.poster || "";
-          }
-        }catch{}
-      }
+async function fetchSheet(url){
+  const u = url + (url.includes("?") ? "&" : "?") + "v=" + Date.now();
+  const res = await fetch(u, { cache: "no-store" });
+  if (!res.ok) throw new Error("Sheet fetch failed: " + res.status);
+  const data = await res.json();
+  if (!data || !Array.isArray(data.items)) throw new Error("Bad sheet format.");
+  return data.items;
+}
 
-      return { src, title, poster };
-    }
+function findItem(items, id){
+  return items.find(x => String(x.id) === String(id));
+}
 
-    function guessType(url){
-      const u = (url || "").toLowerCase();
-      if (u.includes(".m3u8")) return "hls";
-      if (u.includes(".mpd"))  return "dash";
-      if (u.match(/\.(mp4|webm)(\?|$)/)) return "file";
-      if (u.match(/\.(mkv)(\?|$)/)) return "mkv";
-      return "file";
-    }
+async function resolveSource(){
+  const qs = new URLSearchParams(location.search);
+  const sheet = qs.get("sheet");
+  const id = qs.get("id");
+  const ep = qs.get("ep");
 
-    function maybeHttps(url){
-      // GitHub Pages is HTTPS. If URL is http:// many browsers block it.
-      if (location.protocol === "https:" && url.startsWith("http://")){
-        return { tryUrl: url.replace(/^http:\/\//i, "https://"), original: url, swapped: true };
-      }
-      return { tryUrl: url, original: url, swapped: false };
-    }
+  if (!sheet || !id) throw new Error("Missing sheet or id.");
 
-    let hls = null;
-    let dash = null;
+  const items = await fetchSheet(sheet);
+  const item = findItem(items, id);
+  if (!item) throw new Error("Item not found in sheet: " + id);
 
-    function cleanup(){
-      try{
-        if (hls){ hls.destroy(); hls = null; }
-        if (dash){ dash.reset(); dash = null; }
-      }catch{}
-      try{ v.pause(); }catch{}
-      try{ v.removeAttribute("src"); v.load(); }catch{}
-    }
+  let src = "";
+  let title = item.title || "Playing…";
 
-    async function playUrl(rawUrl, title, poster){
-      cleanup();
+  if (item.type === "series"){
+    const list = Array.isArray(item.episodes) ? item.episodes : [];
+    const idx = ep !== null ? Number(ep) : 0;
+    const chosen = list[idx] || list[0];
+    if (!chosen || !chosen.src) throw new Error("Episode source missing.");
+    src = chosen.src;
+    title = `${item.title} — ${chosen.title || ("Episode " + (idx+1))}`;
+  } else {
+    if (!item.src) throw new Error("Movie src missing.");
+    src = item.src;
+  }
 
-      t.textContent = title || "STARTV Player";
-      if (poster) v.setAttribute("poster", poster); else v.removeAttribute("poster");
+  return { src, title };
+}
 
-      if (!rawUrl){
-        setMsg("No video URL received. Go back and select a title again.");
-        return;
-      }
+let hls = null;
 
-      const { tryUrl, original, swapped } = maybeHttps(rawUrl);
-      const type = guessType(tryUrl);
+async function playUrl(url){
+  const video = $("#video");
 
-      openBtn.onclick = ()=> window.open(original, "_blank", "noopener");
-      retryBtn.onclick = ()=> playUrl(rawUrl, title, poster);
-      backBtn.onclick  = ()=> (history.length > 1 ? history.back() : (location.href = "./"));
+  // Cleanup previous
+  if (hls){ try{ hls.destroy(); }catch{} hls = null; }
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
 
-      if (swapped){
-        setMsg(
-          `This site is <b>HTTPS</b> (GitHub Pages). Your link is <b>HTTP</b>, which is often blocked.<br>
-           I will try <b>HTTPS</b> automatically.<br>
-           Original: <a href="${original}" target="_blank" rel="noopener">open http link</a>`
-        );
-      } else {
-        setMsg(`Opening… <a href="${original}" target="_blank" rel="noopener">Open link</a>`);
-      }
+  const lower = normalize(url);
 
-      // MKV warning (many browsers/TVs won't play mkv in HTML5 video)
-      if (type === "mkv"){
-        setMsg(
-          `This looks like an <b>MKV</b> file. Many browsers/TV players can’t play MKV directly.<br>
-           Try the <b>Open</b> button (external player) or use an MP4/HLS link.`
-        );
-        // Still try (some TVs can)
-      }
+  // Native HLS?
+  const canNativeHls = video.canPlayType("application/vnd.apple.mpegURL") !== "";
 
-      // HLS
-      if (type === "hls"){
-        const canNative = v.canPlayType("application/vnd.apple.mpegurl");
-        if (canNative){
-          v.src = tryUrl;
-        } else if (window.Hls && Hls.isSupported()){
-          hls = new Hls({
-            // NOTE: hls.js needs CORS headers from the server because it fetches segments via XHR.
-            // If your server doesn't send Access-Control-Allow-Origin, playback may fail.
-          });
-          hls.loadSource(tryUrl);
-          hls.attachMedia(v);
-          hls.on(Hls.Events.ERROR, function(_, data){
-            setMsg(
-              `HLS error. This often means the server blocks CORS for playlist/segments.<br>
-               Try <b>Open</b> (external) or use a different stream URL.<br>
-               <small>${data && data.details ? data.details : ""}</small>`
-            );
-          });
-        } else {
-          setMsg("This browser/TV cannot play HLS (.m3u8) here. Try Open (external).");
-          return;
-        }
-      }
-
-      // DASH
-      else if (type === "dash"){
-        if (window.dashjs){
-          dash = dashjs.MediaPlayer().create();
-          dash.initialize(v, tryUrl, true);
-          dash.on("error", function(){
-            setMsg(
-              `DASH error. This often means the server blocks CORS for segments.<br>
-               Try <b>Open</b> (external) or use a different stream URL.`
-            );
-          });
-        } else {
-          setMsg("DASH player not available. Try Open (external).");
-          return;
-        }
-      }
-
-      // Regular file (mp4, webm, etc)
-      else {
-        v.src = tryUrl;
-      }
-
-      // Try autoplay (many TVs block autoplay unless muted)
-      try{
-        await v.play();
-        setMsg("Playing ✅");
-      }catch(e){
-        setMsg("Press Play (autoplay may be blocked on this device).");
-      }
-    }
-
-    // Remote-friendly controls
-    document.addEventListener("keydown", (e)=>{
-      const key = e.key;
-      const code = e.keyCode || e.which;
-
-      const isBack =
-        key === "Escape" || key === "Backspace" || key === "BrowserBack" || key === "GoBack" ||
-        code === 27 || code === 8 || code === 461 || code === 10009;
-
-      if (isBack){
-        e.preventDefault(); e.stopPropagation();
-        backBtn.click();
-        return;
-      }
-
-      // Enter toggles play/pause
-      if (key === "Enter" || code === 13){
-        e.preventDefault(); e.stopPropagation();
-        if (v.paused) v.play().catch(()=>{});
-        else v.pause();
-        return;
-      }
-
-      const seek = (sec)=>{
-        try{
-          const t = Math.max(0, Math.min((v.duration || Infinity), (v.currentTime || 0) + sec));
-          v.currentTime = t;
-        }catch{}
-      };
-
-      if (key === "ArrowLeft" || code === 37){ e.preventDefault(); seek(-10); return; }
-      if (key === "ArrowRight"|| code === 39){ e.preventDefault(); seek( 10); return; }
-      if (key === "ArrowUp"   || code === 38){ e.preventDefault(); try{ v.volume = Math.min(1, (v.volume||0) + 0.08); }catch{} return; }
-      if (key === "ArrowDown" || code === 40){ e.preventDefault(); try{ v.volume = Math.max(0, (v.volume||0) - 0.08); }catch{} return; }
+  if (lower.includes(".m3u8") && !canNativeHls && window.Hls && Hls.isSupported()){
+    hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.ERROR, function(_, data){
+      console.warn("HLS error", data);
+      toast("HLS error (maybe CORS / unsupported stream).");
     });
+  } else {
+    video.src = url;
+  }
 
-    // Errors
-    v.addEventListener("error", ()=>{
-      const e = v.error;
-      setMsg(
-        `Playback error.${e ? (" Code: " + e.code) : ""}<br>
-         Try <b>Open</b> (external) or your server may not support HTTPS/CORS.<br>`
-      );
-    });
+  try{
+    await video.play();
+  }catch(e){
+    // Some TVs require user gesture. Press Enter to start.
+    console.warn(e);
+    toast("Press Enter to start playback.");
+  }
+}
 
-    // Boot
-    const payload = readPayload();
-    playUrl(payload.src, payload.title, payload.poster);
-  </script>
+function togglePlay(){
+  const v = $("#video");
+  if (v.paused) v.play().catch(()=>toast("Cannot autoplay. Press Enter again."));
+  else v.pause();
+}
+
+function seekBy(delta){
+  const v = $("#video");
+  if (!isFinite(v.duration)) return;
+  v.currentTime = Math.max(0, Math.min(v.duration, (v.currentTime || 0) + delta));
+}
+
+function updateUI(){
+  const v = $("#video");
+  const dur = isFinite(v.duration) ? v.duration : 0;
+  const cur = isFinite(v.currentTime) ? v.currentTime : 0;
+
+  $("#time").textContent = `${fmt(cur)} / ${fmt(dur)}`;
+
+  const seek = $("#seek");
+  if (dur > 0){
+    seek.value = String(Math.floor((cur / dur) * 1000));
+  } else {
+    seek.value = "0";
+  }
+}
+
+function requestFullscreen(){
+  const el = $("#wrap");
+  const v = $("#video");
+  // Prefer fullscreen video element if supported
+  const target = v;
+  const req = target.requestFullscreen || target.webkitRequestFullscreen || el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) req.call(target);
+}
+
+function goBack(){
+  // Better for TV: go back to index
+  history.length > 1 ? history.back() : (location.href = "index.html");
+}
+
+/* Remote / keyboard */
+document.addEventListener("keydown", (e)=>{
+  const code = e.keyCode || e.which;
+  const key = e.key;
+
+  const isBack =
+    key === "Escape" || key === "Backspace" ||
+    code === 27 || code === 8 || code === 461 || code === 10009;
+
+  if (isBack){
+    e.preventDefault();
+    goBack();
+    return;
+  }
+
+  // prevent scrolling
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(key)) e.preventDefault();
+
+  if (key === "Enter" || code === 13){
+    e.preventDefault();
+    togglePlay();
+    return;
+  }
+  if (key === " " || code === 32){
+    e.preventDefault();
+    togglePlay();
+    return;
+  }
+  if (key === "ArrowLeft" || code === 37){
+    e.preventDefault();
+    seekBy(-10);
+    return;
+  }
+  if (key === "ArrowRight" || code === 39){
+    e.preventDefault();
+    seekBy(10);
+    return;
+  }
+  if (key === "ArrowUp" || code === 38){
+    e.preventDefault();
+    $("#bar").style.display = "block";
+    return;
+  }
+  if (key === "ArrowDown" || code === 40){
+    e.preventDefault();
+    $("#bar").style.display = "none";
+    return;
+  }
+}, {passive:false});
+
+/* Controls */
+$("#btnPlay").addEventListener("click", togglePlay);
+$("#btnBack").addEventListener("click", goBack);
+$("#btnFS").addEventListener("click", requestFullscreen);
+
+$("#seek").addEventListener("input", ()=>{
+  const v = $("#video");
+  if (!isFinite(v.duration) || v.duration <= 0) return;
+  const p = Number($("#seek").value) / 1000;
+  v.currentTime = v.duration * p;
+});
+
+/* Boot */
+(async function boot(){
+  try{
+    const { src, title } = await resolveSource();
+    $("#vTitle").textContent = title;
+    toast("Loading stream…");
+
+    await playUrl(src);
+
+    const v = $("#video");
+    v.addEventListener("timeupdate", updateUI);
+    v.addEventListener("durationchange", updateUI);
+    v.addEventListener("loadedmetadata", updateUI);
+    v.addEventListener("error", ()=>toast("Playback error (often CORS or unsupported format)."));
+
+    updateUI();
+  }catch(err){
+    console.error(err);
+    $("#vTitle").textContent = "Player error";
+    toast(String(err.message || err));
+  }
+})();
+</script>
 </body>
 </html>
-
-
