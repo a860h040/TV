@@ -1537,7 +1537,9 @@ const S = {
   player: { open:false, url:'', title:'', poster:'' },
 };
 
-const ROW_PREVIEW_COUNT = 14;
+const ROW_PREVIEW_COUNT_DEFAULT = 14; // Movies + Series
+const ROW_PREVIEW_COUNT_LIVE = 3;     // TV (live)
+
 const SEARCH_LIMIT = 12;
 
 /* ===== Only show |EN| and |AR| categories (Movies/Series only) ===== */
@@ -2525,7 +2527,8 @@ async function loadCategoryRow(catId){
 
   try{
     const items = await fetchCategoryItems(catId);
-    const preview = items.slice(0, ROW_PREVIEW_COUNT);
+    const previewCount = (S.kind === 'live') ? ROW_PREVIEW_COUNT_LIVE : ROW_PREVIEW_COUNT_DEFAULT;
+const preview = items.slice(0, previewCount);
 
     slider.innerHTML = '';
     preview.forEach(item=>{
