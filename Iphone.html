@@ -107,7 +107,8 @@
   body:not(.loggedIn) #browsePage,
   body:not(.loggedIn) #seeAllPage,
   body:not(.loggedIn) #drawer,
-  body:not(.loggedIn) #playerModal{
+  body:not(.loggedIn) #playerModal,
+  body:not(.loggedIn) #linkModal{
     display:none;
   }
 
@@ -1060,7 +1061,7 @@
   .episodes{ padding: 10px 12px 12px; display:grid; gap:10px; }
   .ep{
     display:grid;
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: 1fr auto auto;
     gap:10px;
     align-items:center;
     padding: 10px 10px;
@@ -1074,25 +1075,25 @@
     text-overflow:ellipsis;
     font-weight: 900;
   }
-  a.linkBtn{
-    text-decoration:none;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
+  .epBtn{
     border-radius:999px;
     padding:10px 14px;
     font-weight:900;
-    color:white;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06);
+    color: var(--text);
+    cursor:pointer;
+  }
+  .epBtn.primary{
+    border:0;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
-    box-shadow: 0 16px 34px rgba(229,9,20,.18);
+    color:white;
   }
 
   /* =========================================================
-     IN-APP PLAYER (NEW) — fullscreen overlay video
+     IN-APP PLAYER — fullscreen overlay video
      ========================================================= */
-  body.playerOpen{
-    overflow:hidden;
-  }
+  body.playerOpen{ overflow:hidden; }
   #playerModal{
     position:fixed;
     inset:0;
@@ -1168,13 +1169,10 @@
     pointer-events:none;
     max-width:min(520px, 92vw);
   }
-  .playerHint.show{
-    opacity:1;
-    transform: translateY(0);
-  }
+  .playerHint.show{ opacity:1; transform: translateY(0); }
 
   /* =========================================================
-     LINK POPUP (NEW) — Open / Copy for TV + Movies
+     LINK POPUP — Open / Copy (FOR TV + Movies + Episodes)
      ========================================================= */
   #linkModal{
     position:fixed;
@@ -1465,7 +1463,7 @@
   <div id="seasons"></div>
 </div>
 
-<!-- IN-APP PLAYER (NEW) -->
+<!-- IN-APP PLAYER -->
 <div id="playerModal" aria-hidden="true">
   <div class="playerFrame">
     <div class="playerTop">
@@ -1481,7 +1479,7 @@
   </div>
 </div>
 
-<!-- LINK POPUP (NEW): TV + Movies -> Open / Copy -->
+<!-- LINK POPUP: used for TV + Movies + Episodes -->
 <div id="linkModal" aria-hidden="true">
   <div class="linkCard">
     <div class="linkTop">
@@ -1537,7 +1535,6 @@ function escapeHtml(s){
     .replaceAll('"','&quot;')
     .replaceAll("'","&#039;");
 }
-
 function uniq(arr){
   const out = [];
   const seen = new Set();
@@ -1550,13 +1547,46 @@ function uniq(arr){
   return out;
 }
 
-/* ---------------- Fetch with timeout + proxy fallback (IMPROVED) ---------------- */
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    return true;
+  }catch{
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position='fixed';
+      ta.style.left='-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return true;
+    }catch{
+      return false;
+    }
+  }
+}
+
+function downloadTextFile(filename, content){
+  const blob = new Blob([content], {type:'audio/x-mpegurl;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{
+    URL.revokeObjectURL(a.href);
+    document.body.removeChild(a);
+  }, 300);
+}
+
+/* ---------------- Fetch with timeout + proxy fallback ---------------- */
 function wrapUrl(url){
   if (PROXY_MODE === 'none') return url;
   if (PROXY_MODE === 'self') return PROXY_BASE + url;
   return url;
 }
-
 async function fetchWithTimeout(url, ms=9000){
   const ctrl = new AbortController();
   const t = setTimeout(()=> ctrl.abort(), ms);
@@ -1571,12 +1601,9 @@ async function fetchWithTimeout(url, ms=9000){
     clearTimeout(t);
   }
 }
-
 async function fetchJsonRobust(url){
   const direct = wrapUrl(url);
 
-  // IMPORTANT: when your page is HTTPS (GitHub Pages), direct http:// will be blocked (mixed content).
-  // So we try HTTPS-friendly proxy URLs too.
   const publicTries = [
     direct,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
@@ -1604,8 +1631,6 @@ async function fetchJsonRobust(url){
 const store = {
   get favSeries(){ return JSON.parse(localStorage.getItem('fav_series_map')||'{}'); },
   set favSeries(v){ localStorage.setItem('fav_series_map', JSON.stringify(v)); },
-  get favCount(){ return JSON.parse(localStorage.getItem('fav_series_count')||'{}'); },
-  set favCount(v){ localStorage.setItem('fav_series_count', JSON.stringify(v)); },
 };
 
 /* ---------------- State ---------------- */
@@ -1619,7 +1644,7 @@ const S = {
   catRowLoaded: new Set(),
   catCache: new Map(),
   index: [],                  // search index across cached categories
-  indexCats: new Set(),       // categories already indexed (avoid duplicates)
+  indexCats: new Set(),       // categories already indexed
 
   hero: { kind:'', item:null, catId:'' },
 
@@ -1629,13 +1654,15 @@ const S = {
   // player
   player: { open:false, url:'', title:'', poster:'' },
 
-  // link popup (NEW)
+  // link popup
   link: { open:false, url:'', title:'', poster:'', returnFocus:null },
+
+  // drawer
+  drawer: { open:false, series:null, links:[] }
 };
 
 const ROW_PREVIEW_COUNT_DEFAULT = 14; // Movies + Series
 const ROW_PREVIEW_COUNT_LIVE = 3;     // TV (live)
-
 const SEARCH_LIMIT = 12;
 
 /* ===== Only show |EN| and |AR| categories (Movies/Series only) ===== */
@@ -1652,7 +1679,7 @@ window.addEventListener('scroll', ()=>{
 });
 
 /* =========================================================
-   IN-APP PLAYER (NEW)
+   IN-APP PLAYER
    ========================================================= */
 let hintTimer = null;
 function showPlayerHint(msg){
@@ -1663,18 +1690,14 @@ function showPlayerHint(msg){
   clearTimeout(hintTimer);
   hintTimer = setTimeout(()=> el.classList.remove('show'), 1800);
 }
-
-function playerIsOpen(){
-  return $('playerModal').classList.contains('show');
-}
+function playerIsOpen(){ return $('playerModal').classList.contains('show'); }
 
 function openPlayer(url, title, poster){
   if (!url) return;
 
-  // Close overlays that can conflict
   closeSearchHard();
   closeDrawer();
-  closeLinkPopup(); // NEW
+  closeLinkPopup();
 
   S.player.open = true;
   S.player.url = url;
@@ -1684,17 +1707,13 @@ function openPlayer(url, title, poster){
   $('playerTitle').textContent = S.player.title;
 
   const v = $('playerVideo');
-  try{
-    v.pause();
-  }catch{}
+  try{ v.pause(); }catch{}
   v.removeAttribute('src');
   v.load();
 
-  // Some TV browsers like having poster set (optional)
   if (S.player.poster) v.setAttribute('poster', S.player.poster);
   else v.removeAttribute('poster');
 
-  // Set src and play
   v.src = url;
 
   $('playerModal').classList.add('show');
@@ -1702,18 +1721,15 @@ function openPlayer(url, title, poster){
 
   showPlayerHint('Loading…');
 
-  // Try autoplay
   setTimeout(async ()=>{
     try{
       await v.play();
       showPlayerHint('Playing • ←/→ seek 10s • Enter play/pause • Back closes');
     }catch(e){
-      // If autoplay blocked, user can press OK/Enter
       showPlayerHint('Press OK/Enter to Play • Back closes');
     }
   }, 60);
 
-  // Focus close for remote navigation
   setTimeout(()=> tvFocus($('playerClose')), 80);
 }
 
@@ -1725,7 +1741,6 @@ function closePlayer(){
   document.body.classList.remove('playerOpen');
   S.player.open = false;
 
-  // Restore focus to something sensible
   if (S.loggedIn){
     setTimeout(()=> tvFocus($('heroPlay').disabled ? $('moviesBtn') : $('heroPlay')), 60);
   } else {
@@ -1749,23 +1764,18 @@ $('playerPlayPause').onclick = ()=>{
     showPlayerHint('Pause');
   }
 };
-
-// Video error -> show hint + allow external
 $('playerVideo').addEventListener('error', ()=>{
   showPlayerHint('Cannot play this format here • Try Open External');
 });
 
 /* =========================================================
-   LINK POPUP (NEW): Open / Copy for TV + Movies
+   LINK POPUP: Open / Copy
    ========================================================= */
-function linkIsOpen(){
-  return $('linkModal').classList.contains('show');
-}
+function linkIsOpen(){ return $('linkModal').classList.contains('show'); }
 
 function openLinkPopup(url, title, poster){
   if (!url) return;
 
-  // Close overlays that can conflict
   closeSearchHard();
   closeDrawer();
 
@@ -1781,7 +1791,6 @@ function openLinkPopup(url, title, poster){
   $('linkModal').classList.add('show');
   setTimeout(()=> tvFocus($('linkOpen')), 60);
 }
-
 function closeLinkPopup(){
   if (!linkIsOpen()) return;
   $('linkModal').classList.remove('show');
@@ -1796,12 +1805,10 @@ function closeLinkPopup(){
     setTimeout(()=> tvFocus($('heroPlay').disabled ? $('moviesBtn') : $('heroPlay')), 40);
   }
 }
-
 $('linkClose').onclick = closeLinkPopup;
 $('linkModal').addEventListener('click', (e)=>{
   if (e.target === $('linkModal')) closeLinkPopup();
 });
-
 $('linkOpen').onclick = ()=>{
   const url = S.link.url;
   const title = S.link.title;
@@ -1809,19 +1816,14 @@ $('linkOpen').onclick = ()=>{
   closeLinkPopup();
   openPlayer(url, title, poster);
 };
-
 $('linkCopy').onclick = async ()=>{
   if (!S.link.url) return;
-  await copyText(S.link.url);
-  setStatus('Copied','ok');
+  const ok = await copyText(S.link.url);
+  setStatus(ok ? 'Copied' : 'Copy failed', ok ? 'ok' : 'err');
 };
 
 /* =========================================================
-   TV REMOTE / KEYBOARD NAV (Samsung/LG/webOS)
-   - Arrow keys move focus
-   - OK/Enter clicks
-   - Back/Return closes search/drawer/player/seeAll/linkPopup
-   - Media keys: play/pause/ff/rw supported in player
+   TV REMOTE / KEYBOARD NAV
    ========================================================= */
 function clearTvFocus(){
   const cur = document.querySelector('.tv-focus');
@@ -1834,7 +1836,6 @@ function tvFocus(el){
   try{ el.focus({preventScroll:true}); }catch{ try{ el.focus(); }catch{} }
   try{ el.scrollIntoView({block:'nearest', inline:'nearest'}); }catch{}
 }
-
 function isVisibleEl(el){
   if (!el) return false;
   if (el.disabled) return false;
@@ -1843,17 +1844,15 @@ function isVisibleEl(el){
   const r = el.getClientRects();
   return r && r.length > 0;
 }
-
 function activeScope(){
   if (!S.loggedIn) return $('loginPage');
   if (playerIsOpen()) return $('playerModal');
-  if (linkIsOpen()) return $('linkModal'); // NEW
+  if (linkIsOpen()) return $('linkModal');
   if ($('searchWrap').classList.contains('open')) return $('searchWrap');
   if ($('drawer').style.display !== 'none') return $('drawer');
   if ($('seeAllPage').style.display !== 'none') return $('seeAllPage');
   return $('browsePage');
 }
-
 function collectFocusable(){
   const sel = [
     'button:not([disabled])',
@@ -1886,12 +1885,10 @@ function collectFocusable(){
     return true;
   });
 }
-
 function centerOf(el){
   const r = el.getBoundingClientRect();
-  return { x: r.left + r.width/2, y: r.top + r.height/2, r };
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
 }
-
 function nextByDirection(dir){
   const cur = document.activeElement && isVisibleEl(document.activeElement) ? document.activeElement : document.querySelector('.tv-focus');
   const items = collectFocusable();
@@ -1929,31 +1926,19 @@ function nextByDirection(dir){
       best = el;
     }
   }
-
   return best;
 }
-
 function closeSearchHard(){
   $('search').value = '';
   $('searchWrap').classList.remove('open');
   $('searchResults').classList.remove('show');
   $('searchResults').innerHTML = '';
 }
-
 function handleBack(){
   if (!S.loggedIn) return false;
 
-  // Player closes first
-  if (playerIsOpen()){
-    closePlayer();
-    return true;
-  }
-
-  // Link popup closes next (NEW)
-  if (linkIsOpen()){
-    closeLinkPopup();
-    return true;
-  }
+  if (playerIsOpen()){ closePlayer(); return true; }
+  if (linkIsOpen()){ closeLinkPopup(); return true; }
 
   if ($('searchWrap').classList.contains('open')){
     closeSearchHard();
@@ -1972,13 +1957,8 @@ function handleBack(){
   }
   return false;
 }
-
 function handleOk(){
-  // If player open: OK toggles play/pause
-  if (playerIsOpen()){
-    $('playerPlayPause').click();
-    return;
-  }
+  if (playerIsOpen()){ $('playerPlayPause').click(); return; }
 
   const el = document.activeElement;
 
@@ -1989,20 +1969,12 @@ function handleOk(){
     }
   }
 
-  if (el && typeof el.click === 'function'){
-    el.click();
-  }
+  if (el && typeof el.click === 'function'){ el.click(); }
 }
-
 function handlePlayerMediaKey(key, code){
   if (!playerIsOpen()) return false;
   const v = $('playerVideo');
   if (!v) return false;
-
-  // Common TV media keycodes:
-  // Play 415, Pause 19/413 (varies), Stop 413, Rew 412/417, FF 417/418
-  const k = key;
-  const c = code;
 
   const seek = (sec)=>{
     try{
@@ -2011,30 +1983,24 @@ function handlePlayerMediaKey(key, code){
     }catch{}
   };
 
-  if (k === ' ' || k === 'Enter' || c === 13){
-    $('playerPlayPause').click();
-    return true;
-  }
+  if (key === 'ArrowLeft' || code === 37){ seek(-10); showPlayerHint('⏪ -10s'); return true; }
+  if (key === 'ArrowRight' || code === 39){ seek( 10); showPlayerHint('⏩ +10s'); return true; }
 
-  if (k === 'ArrowLeft' || c === 37){ seek(-10); showPlayerHint('⏪ -10s'); return true; }
-  if (k === 'ArrowRight' || c === 39){ seek( 10); showPlayerHint('⏩ +10s'); return true; }
-
-  if (k === 'ArrowUp' || c === 38){
+  if (key === 'ArrowUp' || code === 38){
     try{ v.volume = Math.min(1, (v.volume||0) + 0.08); }catch{}
     showPlayerHint('Volume +');
     return true;
   }
-  if (k === 'ArrowDown' || c === 40){
+  if (key === 'ArrowDown' || code === 40){
     try{ v.volume = Math.max(0, (v.volume||0) - 0.08); }catch{}
     showPlayerHint('Volume -');
     return true;
   }
 
-  // Play/Pause keys
-  if (c === 415){ v.play().catch(()=>{}); showPlayerHint('Play'); return true; }
-  if (c === 19 || c === 413){ v.pause(); showPlayerHint('Pause/Stop'); return true; }
-  if (c === 417 || c === 412){ seek(-30); showPlayerHint('⏪ -30s'); return true; }
-  if (c === 418){ seek(30); showPlayerHint('⏩ +30s'); return true; }
+  if (code === 415){ v.play().catch(()=>{}); showPlayerHint('Play'); return true; }
+  if (code === 19 || code === 413){ v.pause(); showPlayerHint('Pause/Stop'); return true; }
+  if (code === 417 || code === 412){ seek(-30); showPlayerHint('⏪ -30s'); return true; }
+  if (code === 418){ seek(30); showPlayerHint('⏩ +30s'); return true; }
 
   return false;
 }
@@ -2043,18 +2009,10 @@ document.addEventListener('keydown', (e)=>{
   const key = e.key;
   const code = e.keyCode || e.which;
 
-  // If player open, consume media + arrows for playback
   if (playerIsOpen()){
     const isBack =
-      key === 'Escape' ||
-      key === 'Backspace' ||
-      key === 'BrowserBack' ||
-      key === 'GoBack' ||
-      key === 'Return' ||
-      code === 10009 || // Samsung Tizen Back
-      code === 461  || // LG/WebOS Back (often)
-      code === 27   ||
-      code === 8;
+      key === 'Escape' || key === 'Backspace' || key === 'BrowserBack' || key === 'GoBack' || key === 'Return' ||
+      code === 10009 || code === 461 || code === 27 || code === 8;
 
     if (isBack){
       e.preventDefault(); e.stopPropagation();
@@ -2067,21 +2025,12 @@ document.addEventListener('keydown', (e)=>{
       e.preventDefault(); e.stopPropagation();
       return;
     }
-    // If not handled, let it fall through
   }
 
-  // If link popup open, Back closes it (NEW)
   if (linkIsOpen()){
     const isBack =
-      key === 'Escape' ||
-      key === 'Backspace' ||
-      key === 'BrowserBack' ||
-      key === 'GoBack' ||
-      key === 'Return' ||
-      code === 10009 ||
-      code === 461  ||
-      code === 27   ||
-      code === 8;
+      key === 'Escape' || key === 'Backspace' || key === 'BrowserBack' || key === 'GoBack' || key === 'Return' ||
+      code === 10009 || code === 461 || code === 27 || code === 8;
 
     if (isBack){
       e.preventDefault(); e.stopPropagation();
@@ -2091,15 +2040,8 @@ document.addEventListener('keydown', (e)=>{
   }
 
   const isBack =
-    key === 'Escape' ||
-    key === 'Backspace' ||
-    key === 'BrowserBack' ||
-    key === 'GoBack' ||
-    key === 'Return' ||
-    code === 10009 ||
-    code === 461  ||
-    code === 27   ||
-    code === 8;
+    key === 'Escape' || key === 'Backspace' || key === 'BrowserBack' || key === 'GoBack' || key === 'Return' ||
+    code === 10009 || code === 461 || code === 27 || code === 8;
 
   if (isBack){
     const handled = handleBack();
@@ -2164,7 +2106,6 @@ function showSeeAllPage(catId, catName, push=false){
   if (push) history.pushState({page:'seeall', kind:S.kind, catId:S.seeAll.catId, catName:S.seeAll.catName}, '', `#cat=${encodeURIComponent(S.seeAll.catId)}`);
   window.scrollTo({top:0, behavior:'instant'});
 }
-
 window.addEventListener('popstate', (e)=>{
   const st = e.state || {};
   if (st.page === 'seeall' && st.catId){
@@ -2173,7 +2114,6 @@ window.addEventListener('popstate', (e)=>{
     showBrowsePage(false);
   }
 });
-
 $('seeAllBack').onclick = ()=>{
   if (history.length > 1) history.back();
   else showBrowsePage(true);
@@ -2201,15 +2141,14 @@ $('toggleSearch').onclick = ()=>{
 document.addEventListener('click', (e)=>{
   if (!S.loggedIn) return;
   if (playerIsOpen()) return;
-  if (linkIsOpen()) return; // NEW: don't auto-close search when link popup open
+  if (linkIsOpen()) return;
   const inside = $('searchWrap').contains(e.target) || $('toggleSearch').contains(e.target);
   if (!inside) closeSearchIfEmpty();
 });
 $('search').addEventListener('blur', ()=> setTimeout(closeSearchIfEmpty, 150));
 
-/* ===== Search improvement: auto-fetch categories until results appear ===== */
+/* ===== Search: auto-fetch categories until results appear ===== */
 let searchToken = 0;
-
 async function ensureIndexForCategory(catId){
   const key = `${S.kind}|${catId}`;
   if (S.indexCats.has(key)) return;
@@ -2229,7 +2168,6 @@ async function ensureIndexForCategory(catId){
     });
   }
 }
-
 async function fillIndexUntilHits(q, token){
   const MAX_CATS_TO_FETCH = 18;
   let fetched = 0;
@@ -2251,7 +2189,6 @@ async function fillIndexUntilHits(q, token){
     if (fetched >= MAX_CATS_TO_FETCH) return;
   }
 }
-
 function renderSearchHits(hits){
   if (!hits.length){
     $('searchResults').classList.add('show');
@@ -2320,7 +2257,6 @@ function renderSearchHits(hits){
     $('searchResults').appendChild(div);
   });
 }
-
 $('search').addEventListener('input', async ()=>{
   const q = ($('search').value||'').trim().toLowerCase();
   const token = ++searchToken;
@@ -2344,9 +2280,7 @@ $('search').addEventListener('input', async ()=>{
           <div class="resMeta">Loading more categories to find matches…</div>
         </div>
       </div>`;
-    try{
-      await fillIndexUntilHits(q, token);
-    }catch{}
+    try{ await fillIndexUntilHits(q, token); }catch{}
     if (token !== searchToken) return;
 
     hits = S.index
@@ -2358,14 +2292,13 @@ $('search').addEventListener('input', async ()=>{
 });
 
 /* =========================================================
-   AUTO CONNECT (password finished) + Enter connects
+   AUTO CONNECT
    ========================================================= */
 let autoConnectTimer = null;
 let isConnecting = false;
 
 function scheduleAutoConnect(){
   if (S.loggedIn || isConnecting) return;
-
   const u = $('username').value.trim();
   const p = $('password').value.trim();
   if (!u || !p) return;
@@ -2375,7 +2308,7 @@ function scheduleAutoConnect(){
 }
 
 /* =========================================================
-   Login (IMPROVED): tries HTTPS version too + keeps proxy fallback
+   Login
    ========================================================= */
 async function tryLoginWithHost(baseHost){
   const url = `${trimSlash(baseHost)}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`;
@@ -2395,7 +2328,6 @@ async function doConnect(){
   setStatus('Connecting…','warn');
 
   try{
-    // Try host variants (HTTPS first when possible)
     const candidates = uniq([
       S.host,
       S.host.replace(/^http:\/\//i,'https://'),
@@ -2403,7 +2335,6 @@ async function doConnect(){
     ]);
 
     let authed = false;
-
     for (const h of candidates){
       try{
         const { ok } = await tryLoginWithHost(h);
@@ -2412,9 +2343,7 @@ async function doConnect(){
           authed = true;
           break;
         }
-      }catch(e){
-        // keep trying
-      }
+      }catch{}
     }
 
     if (authed){
@@ -2425,6 +2354,7 @@ async function doConnect(){
       $('moviesBtn').disabled = false;
       $('seriesBtn').disabled = false;
       $('toggleSearch').disabled = false;
+
       setStatus('Login OK','ok');
 
       $('heroTitle').textContent = 'Connected';
@@ -2451,7 +2381,6 @@ async function doConnect(){
     isConnecting = false;
   }
 }
-
 $('connect').onclick = doConnect;
 $('logout').onclick = ()=> location.reload();
 
@@ -2472,7 +2401,6 @@ function setActiveNav(kind){
   if (kind === 'vod') $('moviesBtn').classList.add('navActive');
   if (kind === 'series') $('seriesBtn').classList.add('navActive');
 }
-
 $('liveBtn').onclick  = ()=> loadKind('live');
 $('moviesBtn').onclick= ()=> loadKind('vod');
 $('seriesBtn').onclick= ()=> loadKind('series');
@@ -2528,6 +2456,10 @@ function buildPlayableUrl(kind, item){
   return '';
 }
 
+/* ✅ THIS IS THE PART YOU WANTED:
+   - TV + Movies now use the SAME "Open / Copy" popup (openLinkPopup)
+   - Series still opens the drawer, and episodes also use Open/Copy popup below
+*/
 $('heroPlay').onclick = ()=>{
   const {kind, item} = S.hero;
   if (!item) return;
@@ -2539,8 +2471,6 @@ $('heroPlay').onclick = ()=>{
 
   const url = buildPlayableUrl(kind, item);
   const poster = getPoster(kind, item);
-
-  // NEW: Movies + TV show Open/Copy popup (same style behavior request)
   openLinkPopup(url, item.name || 'Link', poster);
 };
 
@@ -2561,7 +2491,7 @@ async function loadKind(kind){
 
   closeDrawer();
   closeSearchHard();
-  closeLinkPopup(); // NEW
+  closeLinkPopup();
   showBrowsePage(true);
 
   S.kind = kind;
@@ -2769,7 +2699,7 @@ async function openCategoryPage(catId, catName, pushState=true){
 
   closeDrawer();
   closeSearchHard();
-  closeLinkPopup(); // NEW
+  closeLinkPopup();
   showSeeAllPage(catId, catName, pushState);
 
   const grid = $('seeAllGrid');
@@ -2895,7 +2825,7 @@ function makeCard(item, catId){
 
     const url = buildPlayableUrl(S.kind, item);
 
-    // NEW: Movies + TV -> show popup with Open / Copy
+    // ✅ TV + Movies BOTH open the Open/Copy popup now
     openLinkPopup(url, item.name || 'Link', poster);
   };
 
@@ -2941,169 +2871,208 @@ function toggleFavSeries(item, btnEl){
   store.favSeries = favMap;
 }
 
-/* ---------------- Series drawer ---------------- */
+/* =========================================================
+   SERIES DRAWER (FULL)
+   - Episodes ALSO use the same Open/Copy popup
+   ========================================================= */
+function drawerIsOpen(){
+  return $('drawer').style.display !== 'none';
+}
+function closeDrawer(){
+  $('drawer').style.display = 'none';
+  $('seasons').innerHTML = '';
+  S.drawer.open = false;
+  S.drawer.series = null;
+  S.drawer.links = [];
+}
+
 $('closeDrawer').onclick = ()=> closeDrawer();
-$('copyAll').onclick = ()=>{
-  if (!S.currentSeries) return;
-  const links = buildAllEpisodeLinks(S.currentSeasons);
-  copyText(links.join('\n'));
-  setStatus('Copied episode links','ok');
-};
-$('downloadM3U').onclick = ()=>{
-  if (!S.currentSeries) return;
-  const links = buildAllEpisodeLinks(S.currentSeasons);
-  const m3u = buildM3U(links, S.currentSeries.name);
-  downloadText(m3u, `${safeName(S.currentSeries.name || 'series')}.m3u`);
-};
 
-async function openSeries(serie){
-  $('seriesTitle').textContent = serie.name || 'Series';
-  S.currentSeries = { id: String(serie.series_id), name: serie.name || 'Series' };
-  $('seasons').innerHTML = '<div style="color:var(--muted);padding:8px">Loading seasons & episodes…</div>';
+async function fetchSeriesInfo(seriesId){
+  const url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_series_info&series_id=${encodeURIComponent(seriesId)}`;
+  return await fetchJsonRobust(url);
+}
+
+function episodePlayableUrl(ep){
+  // Xtream Codes: /series/user/pass/{episode_id}.{ext}
+  const ext = (ep.container_extension || 'mp4').replace(/^\./,'');
+  const id = ep.id || ep.episode_id || ep.stream_id;
+  if (!id) return '';
+  return `${S.host}/series/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${id}.${ext}`;
+}
+
+function normalizeEpisodes(info){
+  // info.episodes can be object keyed by season number
+  const episodesObj = info && info.episodes ? info.episodes : {};
+  const seasonsArr = Array.isArray(info && info.seasons) ? info.seasons : [];
+
+  // Build season numbers list
+  let seasonNums = [];
+
+  if (seasonsArr.length){
+    seasonNums = seasonsArr
+      .map(s => String(s.season_number ?? s.season ?? s.id ?? '').trim())
+      .filter(Boolean);
+  } else {
+    seasonNums = Object.keys(episodesObj || {});
+  }
+
+  seasonNums = uniq(seasonNums);
+
+  // map seasonNum => episodes[]
+  const seasonMap = new Map();
+  for (const sn of seasonNums){
+    const eps = episodesObj[sn] || episodesObj[String(parseInt(sn,10))] || [];
+    seasonMap.set(sn, Array.isArray(eps) ? eps : []);
+  }
+
+  // If no seasons but a flat list exists
+  if (!seasonNums.length && Array.isArray(info && info.episodes)){
+    seasonMap.set('1', info.episodes);
+    seasonNums = ['1'];
+  }
+
+  return { seasonNums, seasonMap };
+}
+
+async function openSeries(item){
+  if (!item) return;
+
+  closeSearchHard();
+  closeLinkPopup();
+  closePlayer();
+
   $('drawer').style.display = 'block';
+  S.drawer.open = true;
+  S.drawer.series = item;
+  S.drawer.links = [];
 
-  const counts = store.favCount;
-  counts[S.currentSeries.id] = (counts[S.currentSeries.id] || 0) + 1;
-  store.favCount = counts;
+  $('seriesTitle').textContent = item.name || 'Series';
+  $('seasons').innerHTML = `<div style="color:var(--muted); padding:12px 2px;">Loading seasons…</div>`;
 
   try{
-    const url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_series_info&series_id=${encodeURIComponent(serie.series_id)}`;
-    const info = await fetchJsonRobust(url);
-
-    const episodesBySeason = info.episodes || {};
-    S.currentSeasons = episodesBySeason;
-
-    const seasonsBox = $('seasons');
-    seasonsBox.innerHTML = '';
-    const seasonNums = Object.keys(episodesBySeason).sort((a,b)=>Number(a)-Number(b));
+    const info = await fetchSeriesInfo(item.series_id);
+    const { seasonNums, seasonMap } = normalizeEpisodes(info);
 
     if (!seasonNums.length){
-      seasonsBox.innerHTML = '<div style="color:var(--muted);padding:8px">No episodes found.</div>';
+      $('seasons').innerHTML = `<div style="color:var(--muted); padding:12px 2px;">No seasons / episodes found.</div>`;
       return;
     }
 
-    seasonNums.forEach(seasonNo=>{
-      const eps = episodesBySeason[seasonNo] || [];
+    $('seasons').innerHTML = '';
 
-      const det = document.createElement('details');
-      const sum = document.createElement('summary');
-      sum.textContent = `Season ${seasonNo} • ${eps.length} episode(s)`;
-      sum.tabIndex = 0;
+    seasonNums.forEach((sn, idx)=>{
+      const details = document.createElement('details');
+      if (idx === 0) details.open = true;
 
-      sum.addEventListener('focus', ()=>{ clearTvFocus(); sum.classList.add('tv-focus'); });
-      sum.addEventListener('blur', ()=> sum.classList.remove('tv-focus'));
-      sum.addEventListener('keydown', (e)=>{
-        if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
-          e.preventDefault();
-          det.open = !det.open;
-        }
-      });
+      const label =
+        (Array.isArray(info.seasons) && info.seasons.find(s => String(s.season_number) === String(sn))?.name)
+        || `Season ${sn}`;
 
-      const wrap = document.createElement('div');
-      wrap.className = 'episodes';
+      const eps = seasonMap.get(sn) || [];
 
-      eps.forEach(ep=>{
-        const row = document.createElement('div');
-        row.className = 'ep';
+      details.innerHTML = `
+        <summary>${escapeHtml(label)} <span style="opacity:.6;font-weight:700">(${eps.length})</span></summary>
+        <div class="episodes"></div>
+      `;
 
-        const title = document.createElement('div');
-        title.className = 'epName';
-        title.textContent = ep.title || `Episode ${ep.episode_num || ''}`;
+      const epWrap = details.querySelector('.episodes');
 
-        const ext = (ep.container_extension || 'mp4').replace(/^\./,'');
-        const epUrl = `${S.host}/series/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ep.id}.${ext}`;
+      if (!eps.length){
+        epWrap.innerHTML = `<div style="color:var(--muted); padding:8px 2px;">No episodes.</div>`;
+      } else {
+        eps.forEach((ep, i)=>{
+          const epName = ep.title || ep.name || `Episode ${i+1}`;
+          const url = episodePlayableUrl(ep);
+          if (url) S.drawer.links.push(url);
 
-        const playBtn = document.createElement('button');
-        playBtn.className = 'btn primary';
-        playBtn.textContent = 'Play';
-        playBtn.onclick = ()=>{
-          openPlayer(epUrl, `${S.currentSeries?.name || 'Series'} • ${title.textContent}`, S.hero?.item?.cover || '');
-        };
+          const row = document.createElement('div');
+          row.className = 'ep';
 
-        const open = document.createElement('a');
-        open.className = 'linkBtn';
-        open.textContent = 'Open';
-        open.href = epUrl;
-        open.target = '_blank';
-        open.rel = 'noopener';
+          const openBtn = document.createElement('button');
+          openBtn.className = 'epBtn primary';
+          openBtn.textContent = 'Open';
+          openBtn.tabIndex = 0;
+          openBtn.onclick = ()=>{
+            // ✅ episodes use same popup too
+            openLinkPopup(url, `${item.name || 'Series'} — ${epName}`, getPoster('series', item) || item.cover || '');
+          };
 
-        const copy = document.createElement('button');
-        copy.className = 'btn';
-        copy.textContent = 'Copy';
-        copy.onclick = async ()=>{
-          await copyText(epUrl);
-          setStatus('Copied','ok');
-        };
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'epBtn';
+          copyBtn.textContent = 'Copy';
+          copyBtn.tabIndex = 0;
+          copyBtn.onclick = async ()=>{
+            if (!url) return;
+            const ok = await copyText(url);
+            setStatus(ok ? 'Copied' : 'Copy failed', ok ? 'ok' : 'err');
+          };
 
-        row.appendChild(title);
-        row.appendChild(playBtn);
-        row.appendChild(open);
-        row.appendChild(copy);
-        wrap.appendChild(row);
-      });
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'epName';
+          nameDiv.textContent = epName;
 
-      det.appendChild(sum);
-      det.appendChild(wrap);
-      $('seasons').appendChild(det);
+          // whole row click = popup (same behavior)
+          row.onclick = ()=> openLinkPopup(url, `${item.name || 'Series'} — ${epName}`, getPoster('series', item) || item.cover || '');
+          row.appendChild(nameDiv);
+          row.appendChild(openBtn);
+          row.appendChild(copyBtn);
+
+          [row, openBtn, copyBtn].forEach(el=>{
+            el.addEventListener('focus', ()=>{ clearTvFocus(); el.classList.add('tv-focus'); });
+            el.addEventListener('blur', ()=> el.classList.remove('tv-focus'));
+            el.addEventListener('keydown', (e)=>{
+              if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+                e.preventDefault();
+                if (el.click) el.click();
+              }
+            });
+          });
+
+          epWrap.appendChild(row);
+        });
+      }
+
+      $('seasons').appendChild(details);
     });
 
-    const first = $('seasons').querySelector('details');
-    if (first) first.open = true;
-
-    setTimeout(()=>{
-      const firstSum = $('seasons').querySelector('summary');
-      if (firstSum) tvFocus(firstSum);
-    }, 80);
+    setTimeout(()=> tvFocus($('closeDrawer')), 60);
 
   }catch(e){
     console.error(e);
-    $('seasons').innerHTML = `<div style="color:#ef4444;padding:8px">Failed to load episodes.</div>`;
+    $('seasons').innerHTML = `<div style="color:#ef4444; padding:12px 2px;">Failed to load series info.</div>`;
   }
 }
 
-function closeDrawer(){
-  $('drawer').style.display='none';
-  S.currentSeries=null;
-  S.currentSeasons={};
-}
+$('copyAll').onclick = async ()=>{
+  if (!S.drawer.links.length){
+    setStatus('No links','warn');
+    return;
+  }
+  const ok = await copyText(S.drawer.links.join('\n'));
+  setStatus(ok ? 'Copied all links' : 'Copy failed', ok ? 'ok' : 'err');
+};
 
-/* ---------------- Link builders & utils ---------------- */
-function buildAllEpisodeLinks(bySeason){
-  const links = [];
-  const seasonNums = Object.keys(bySeason).sort((a,b)=>Number(a)-Number(b));
-  seasonNums.forEach(s=>{
-    (bySeason[s]||[]).forEach(ep=>{
-      const ext = (ep.container_extension || 'mp4').replace(/^\./,'');
-      links.push(`${S.host}/series/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ep.id}.${ext}`);
-    });
-  });
-  return links;
-}
-function buildM3U(links, title='Playlist'){
-  let m3u = '#EXTM3U\n';
-  links.forEach((u, i)=>{
-    m3u += `#EXTINF:-1,${title} ${String(i+1).padStart(2,'0')}\n${u}\n`;
-  });
-  return m3u;
-}
-async function copyText(txt){
-  try { await navigator.clipboard.writeText(txt); } catch {}
-}
-function downloadText(txt, filename){
-  const blob = new Blob([txt], {type:'audio/x-mpegurl'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename || 'playlist.m3u';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=> URL.revokeObjectURL(url), 1000);
-}
+$('downloadM3U').onclick = ()=>{
+  if (!S.drawer.series) return;
+  if (!S.drawer.links.length){
+    setStatus('No links','warn');
+    return;
+  }
+  const name = safeName(S.drawer.series.name || 'series') || 'series';
+  const lines = [
+    '#EXTM3U',
+    ...S.drawer.links.map((u,i)=> `#EXTINF:-1,${name} - Episode ${i+1}\n${u}`)
+  ];
+  downloadTextFile(`${name}.m3u`, lines.join('\n'));
+  setStatus('M3U downloaded','ok');
+};
 
-/* ===== Default route ===== */
-history.replaceState({page:'browse'}, '', '#browse');
-
-/* initial TV focus (login screen) */
-setTimeout(()=> tvFocus($('password').value ? $('password') : $('username')), 120);
+/* =========================================================
+   STARTUP
+   ========================================================= */
+setStatus('Not connected','warn');
+tvFocus($('username'));
 </script>
-
 </body>
 </html>
