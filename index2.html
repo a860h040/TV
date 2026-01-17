@@ -942,6 +942,27 @@
   .favBtn.on{ color:#ffd166; }
   .favBtn.off{ color:rgba(243,245,255,.75); }
 
+  /* CHANGED: Copy button for Live/Sport cards */
+  .copyBtn{
+    position:absolute;
+    top:12px; right:12px;
+    width:40px; height:40px;
+    border-radius: 999px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(0,0,0,.52);
+    border: 1px solid rgba(255,255,255,.14);
+    backdrop-filter: blur(12px);
+    font-weight: 900;
+    z-index:3;
+    transition: transform .18s var(--ease), box-shadow .18s var(--ease), filter .18s var(--ease);
+  }
+  .copyBtn:hover{
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(229,9,20,.10);
+  }
+
   /* Skeleton */
   .skeleton{ animation: pulse 1.05s ease-in-out infinite; background: rgba(255,255,255,.06); }
   @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
@@ -1157,23 +1178,37 @@
       <span class="lbl">TV</span>
     </button>
 
-    <button id="moviesBtn" class="railBtn" disabled title="Movies">
+    <!-- CHANGED: label Movies -> Movie -->
+    <button id="moviesBtn" class="railBtn" disabled title="Movie">
       <span class="ic" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
           <path d="M4 7h16v10H4V7Z" stroke="currentColor" stroke-width="2"/>
           <path d="M8 7l2 10M14 7l2 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </span>
-      <span class="lbl">Movies</span>
+      <span class="lbl">Movie</span>
     </button>
 
-    <button id="seriesBtn" class="railBtn" disabled title="Series">
+    <!-- CHANGED: label Series -> Seres -->
+    <button id="seriesBtn" class="railBtn" disabled title="Seres">
       <span class="ic" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
           <path d="M6 7h12M6 12h12M6 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </span>
-      <span class="lbl">Series</span>
+      <span class="lbl">Seres</span>
+    </button>
+
+    <!-- CHANGED: added Sport TV option -->
+    <button id="sportBtn" class="railBtn" disabled title="Sport TV">
+      <span class="ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M12 9l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 11.3l2-.3 1-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="lbl">Sport TV</span>
     </button>
 
     <div class="spacer"></div>
@@ -1229,7 +1264,7 @@
       <div class="heroCard">
         <h1 class="heroTitle" id="heroTitle">Welcome</h1>
         <p class="heroDesc" id="heroDesc">
-          Connect, then choose TV / Movies / Series. Rows will load as you scroll.
+          Connect, then choose TV / Movie / Seres / Sport TV. Rows will load as you scroll.
         </p>
 
         <div class="heroMeta" id="heroMeta">
@@ -1246,6 +1281,17 @@
               </svg>
             </span>
             Play / Open
+          </button>
+
+          <!-- CHANGED: Copy Link button -->
+          <button class="cta ghost" id="heroCopy" disabled title="Copy stream link">
+            <span class="ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                <path d="M9 9h10v10H9V9Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M5 5h10v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </span>
+            Copy Link
           </button>
 
           <button class="cta ghost" id="heroFav" disabled>
@@ -1316,11 +1362,24 @@ const PROXY_BASE = '';
 const $ = id => document.getElementById(id);
 const placeholderImg = 'https://via.placeholder.com/300x450?text=No+Image';
 
+/* CHANGED: remember last status so we can restore after "Copied!" flashes */
+let lastStatus = { msg: 'Not connected', kind: 'warn' };
+let flashTimer = null;
+
 function setStatus(msg, kind){
   const cls = kind === 'ok' ? 'ok' : kind === 'err' ? 'err' : 'warn';
   const html = `<span class="statusPill ${cls}">${msg}</span>`;
+  lastStatus = { msg, kind };
   if ($('status')) $('status').innerHTML = html;
   if ($('loginStatus')) $('loginStatus').innerHTML = html;
+}
+
+/* CHANGED: short confirmation message after copy */
+function flashStatus(msg='Copied!', kind='ok', ms=900){
+  const prev = { ...lastStatus };
+  setStatus(msg, kind);
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(()=> setStatus(prev.msg, prev.kind), ms);
 }
 
 function pickJsonText(text){
@@ -1384,7 +1443,7 @@ const S = {
   user:'', pass:'',
   loggedIn:false,
 
-  kind:'',                    // live | vod | series
+  kind:'',                    // live | vod | series | sport  (CHANGED: sport)
   categories:[],
   catRowLoaded: new Set(),
   catCache: new Map(),
@@ -1404,6 +1463,12 @@ const SEARCH_LIMIT = 12;
 function isAllowedCategoryName(name){
   const n = String(name || '').toUpperCase();
   return n.includes('|EN|') || n.includes('|AR|');
+}
+
+/* CHANGED: Sport TV should ONLY show categories that START with AR| / BEE| / UK| */
+function isSportCategoryName(name){
+  const n = String(name || '').trim().toUpperCase();
+  return n.startsWith('AR|') || n.startsWith('BEE|') || n.startsWith('UK|');
 }
 
 /* ===== Header behavior ===== */
@@ -1741,7 +1806,7 @@ function renderSearchHits(hits){
       <div class="resItem" tabindex="0">
         <div class="resText">
           <div class="resName">No results found</div>
-          <div class="resMeta">Try another keyword, or switch Movies/Series.</div>
+          <div class="resMeta">Try another keyword, or switch Movie/Seres.</div>
         </div>
       </div>`;
     const x = $('searchResults').querySelector('.resItem');
@@ -1856,6 +1921,47 @@ function scheduleAutoConnect(){
   autoConnectTimer = setTimeout(()=> doConnect(), 600);
 }
 
+/* CHANGED: unified URL builder for play/copy */
+function playUrlFor(kind, item){
+  if (!item) return '';
+  const u = encodeURIComponent(S.user);
+  const p = encodeURIComponent(S.pass);
+
+  if (kind === 'live' || kind === 'sport'){
+    return `${S.host}/live/${u}/${p}/${item.stream_id}.m3u8`;
+  }
+  if (kind === 'vod'){
+    const ext = (item.container_extension || 'mp4').replace(/^\./,'');
+    return `${S.host}/movie/${u}/${p}/${item.stream_id}.${ext}`;
+  }
+  return '';
+}
+
+/* CHANGED: stronger copy (clipboard + fallback) */
+async function copyText(txt){
+  try{
+    await navigator.clipboard.writeText(txt);
+    return true;
+  }catch(e){
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly','');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return !!ok;
+    }catch{
+      return false;
+    }
+  }
+}
+
 /* ---------------- Login (converted to function) ---------------- */
 async function doConnect(){
   if (isConnecting || S.loggedIn) return;
@@ -1878,12 +1984,14 @@ async function doConnect(){
       $('liveBtn').disabled = false;
       $('moviesBtn').disabled = false;
       $('seriesBtn').disabled = false;
+      $('sportBtn').disabled = false; /* CHANGED: enable Sport TV */
       $('toggleSearch').disabled = false;
       setStatus('Login OK','ok');
 
       $('heroTitle').textContent = 'Connected';
-      $('heroDesc').textContent = 'Use remote arrows + OK. Choose TV / Movies / Series to start.';
+      $('heroDesc').textContent = 'Use remote arrows + OK. Choose TV / Movie / Seres / Sport TV to start.';
       $('heroPlay').disabled = true;
+      $('heroCopy').disabled = true; /* CHANGED */
       $('heroFav').disabled = true;
       $('rows').innerHTML = '';
       showBrowsePage(true);
@@ -1921,25 +2029,28 @@ function setActiveNav(kind){
   $('liveBtn').classList.remove('navActive');
   $('moviesBtn').classList.remove('navActive');
   $('seriesBtn').classList.remove('navActive');
+  $('sportBtn').classList.remove('navActive'); /* CHANGED */
 
   if (kind === 'live') $('liveBtn').classList.add('navActive');
   if (kind === 'vod') $('moviesBtn').classList.add('navActive');
   if (kind === 'series') $('seriesBtn').classList.add('navActive');
+  if (kind === 'sport') $('sportBtn').classList.add('navActive'); /* CHANGED */
 }
 
-$('liveBtn').onclick  = ()=> loadKind('live');
-$('moviesBtn').onclick= ()=> loadKind('vod');
-$('seriesBtn').onclick= ()=> loadKind('series');
+$('liveBtn').onclick   = ()=> loadKind('live');
+$('moviesBtn').onclick = ()=> loadKind('vod');
+$('seriesBtn').onclick = ()=> loadKind('series');
+$('sportBtn').onclick  = ()=> loadKind('sport'); /* CHANGED */
 
 /* ---------------- Hero ---------------- */
 function setHero(kind, item, catId){
   S.hero = { kind, item, catId };
 
-  const name = item?.name || (kind==='live'?'Live TV':'Title');
+  const name = item?.name || ((kind==='live' || kind==='sport') ? 'Live TV' : 'Title');
   $('heroTitle').textContent = name;
 
   const desc =
-    kind==='live' ? 'Tap Play to open the stream.' :
+    (kind==='live' || kind==='sport') ? 'Tap Play to open the stream.' :
     kind==='vod'  ? 'Tap Play to open the movie.' :
                     'Tap Play to open the series episodes.';
   $('heroDesc').textContent = desc;
@@ -1953,12 +2064,22 @@ function setHero(kind, item, catId){
      linear-gradient(0deg, rgba(4,5,10,.98) 0%, rgba(4,5,10,.58) 28%, rgba(4,5,10,.14) 60%, rgba(4,5,10,.98) 100%),
      url('${poster}')`;
 
+  const kindLabel =
+    (kind==='live')  ? 'TV' :
+    (kind==='sport') ? 'Sport TV' :
+    (kind==='vod')   ? 'Movie' :
+                       'Seres';
+
   $('heroMeta').innerHTML = `
-    <span class="tag hot">${kind==='live'?'TV':kind==='vod'?'Movies':'Series'}</span>
+    <span class="tag hot">${kindLabel}</span>
     <span class="tag">${catId ? `Category ${catId}` : '—'}</span>
   `;
 
   $('heroPlay').disabled = false;
+
+  /* CHANGED: enable hero copy for stream-bearing views */
+  const canCopy = (kind==='live' || kind==='sport' || kind==='vod');
+  $('heroCopy').disabled = !canCopy;
 
   if (kind === 'series'){
     $('heroFav').disabled = false;
@@ -1974,16 +2095,25 @@ $('heroPlay').onclick = ()=>{
   const {kind, item} = S.hero;
   if (!item) return;
 
-  if (kind === 'live'){
-    const m3u8 = `${S.host}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.m3u8`;
+  if (kind === 'live' || kind === 'sport'){ /* CHANGED */
+    const m3u8 = playUrlFor(kind, item);
     window.open(m3u8,'_blank','noopener');
   } else if (kind === 'vod'){
-    const ext = (item.container_extension || 'mp4').replace(/^\./,'');
-    const url = `${S.host}/movie/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.${ext}`;
+    const url = playUrlFor(kind, item);
     window.open(url,'_blank','noopener');
   } else {
     openSeries(item);
   }
+};
+
+/* CHANGED: Hero copy button */
+$('heroCopy').onclick = async ()=>{
+  const {kind, item} = S.hero;
+  const url = playUrlFor(kind, item);
+  if (!url) return;
+  const ok = await copyText(url);
+  if (ok) flashStatus('Copied!','ok',900);
+  else flashStatus('Copy failed','err',1200);
 };
 
 $('heroFav').onclick = ()=>{
@@ -2018,16 +2148,18 @@ async function loadKind(kind){
 
   $('rows').innerHTML = '';
 
-  $('heroTitle').textContent = kind==='live'?'TV':'Browse';
+  /* CHANGED: hero title/desc for Sport TV */
+  $('heroTitle').textContent = (kind==='live') ? 'TV' : (kind==='sport') ? 'Sport TV' : 'Browse';
   $('heroDesc').textContent = 'Scroll down — each category is a horizontal slider row.';
   $('heroPlay').disabled = true;
+  $('heroCopy').disabled = true; /* CHANGED */
   $('heroFav').disabled = true;
 
   setStatus('Loading categories…','warn');
 
   try{
     let url = '';
-    if (kind==='live'){
+    if (kind==='live' || kind==='sport'){ /* CHANGED */
       url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_live_categories`;
     } else if (kind==='vod'){
       url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_vod_categories`;
@@ -2040,6 +2172,8 @@ async function loadKind(kind){
 
     if (kind === 'live'){
       S.categories = allCats;
+    } else if (kind === 'sport'){ /* CHANGED: filter sports categories only */
+      S.categories = allCats.filter(c => isSportCategoryName(c.category_name));
     } else {
       S.categories = allCats.filter(c => isAllowedCategoryName(c.category_name));
     }
@@ -2059,11 +2193,14 @@ async function loadKind(kind){
       sec.setAttribute('data-cat-id', catId);
       sec.id = `row-${kind}-${catId}`;
 
+      /* CHANGED: (kind==='live'||kind==='sport') uses Channels */
+      const subText = ((kind==='live' || kind==='sport') ? 'Channels' : 'Titles');
+
       sec.innerHTML = `
         <div class="sectionHead">
           <div>
             <h2 class="sectionTitle">${escapeHtml(catName)}</h2>
-            <div class="sectionSub">${kind==='live'?'Channels':'Titles'} load when this row becomes visible</div>
+            <div class="sectionSub">${subText} load when this row becomes visible</div>
           </div>
           <button class="ghostBtn" data-seeall="${catId}">See all</button>
         </div>
@@ -2193,7 +2330,7 @@ async function fetchCategoryItems(catId){
   if (S.catCache.has(key)) return S.catCache.get(key);
 
   let url = '';
-  if (S.kind==='live'){
+  if (S.kind==='live' || S.kind==='sport'){ /* CHANGED */
     url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_live_streams&category_id=${encodeURIComponent(catId)}`;
   } else if (S.kind==='vod'){
     url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_vod_streams&category_id=${encodeURIComponent(catId)}`;
@@ -2249,7 +2386,7 @@ async function openCategoryPage(catId, catName, pushState=true){
 /* ---------------- Cards ---------------- */
 function getPoster(kind, item){
   if (!item) return '';
-  if (kind==='live'){
+  if (kind==='live' || kind==='sport'){ /* CHANGED */
     return (item.stream_icon && item.stream_icon !== 'null') ? item.stream_icon : '';
   }
   if (kind==='vod'){
@@ -2260,7 +2397,7 @@ function getPoster(kind, item){
 
 function getMeta(kind, item){
   if (!item) return '';
-  if (kind==='live') return `ID ${item.stream_id || ''}`;
+  if (kind==='live' || kind==='sport') return `ID ${item.stream_id || ''}`; /* CHANGED */
   if (kind==='vod')  return (item.container_extension || 'mp4').toUpperCase();
   return item.releaseDate || `ID ${item.series_id || ''}`;
 }
@@ -2271,7 +2408,15 @@ function makeCard(item, catId){
   div.tabIndex = 0;
   div.setAttribute('role','button');
 
-  div.addEventListener('focus', ()=>{ clearTvFocus(); div.classList.add('tv-focus'); });
+  /* CHANGED: also setHero on focus (helps TV remote selection & copy) */
+  div.addEventListener('focus', ()=>{
+    clearTvFocus();
+    div.classList.add('tv-focus');
+    if ($('browsePage').style.display !== 'none'){
+      setHero(S.kind, item, catId);
+      $('heroPlay').disabled = false;
+    }
+  });
   div.addEventListener('blur', ()=> div.classList.remove('tv-focus'));
   div.addEventListener('keydown', (e)=>{
     if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
@@ -2281,7 +2426,7 @@ function makeCard(item, catId){
   });
 
   const poster = getPoster(S.kind, item) || placeholderImg;
-  const name = item.name || (S.kind==='live'?'Channel':S.kind==='vod'?'Movie':'Series');
+  const name = item.name || ((S.kind==='live' || S.kind==='sport') ? 'Channel' : S.kind==='vod' ? 'Movie' : 'Seres'); /* CHANGED */
   const meta = getMeta(S.kind, item);
 
   div.innerHTML = `
@@ -2322,6 +2467,40 @@ function makeCard(item, catId){
     div.appendChild(fav);
   }
 
+  /* CHANGED: add Copy button for Live/Sport cards */
+  if (S.kind === 'live' || S.kind === 'sport'){
+    const copyBtn = document.createElement('div');
+    copyBtn.className = 'copyBtn';
+    copyBtn.title = 'Copy stream URL';
+    copyBtn.tabIndex = 0;
+    copyBtn.setAttribute('role','button');
+    copyBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+        <path d="M9 9h10v10H9V9Z" stroke="currentColor" stroke-width="2"/>
+        <path d="M5 5h10v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    `;
+
+    copyBtn.addEventListener('focus', ()=>{ clearTvFocus(); copyBtn.classList.add('tv-focus'); });
+    copyBtn.addEventListener('blur', ()=> copyBtn.classList.remove('tv-focus'));
+    copyBtn.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+        e.preventDefault();
+        copyBtn.click();
+      }
+    });
+
+    copyBtn.onclick = async (e)=>{
+      e.stopPropagation();
+      const url = playUrlFor(S.kind, item);
+      const ok = await copyText(url);
+      if (ok) flashStatus('Copied!','ok',900);
+      else flashStatus('Copy failed','err',1200);
+    };
+
+    div.appendChild(copyBtn);
+  }
+
   div.addEventListener('mouseenter', ()=>{
     if ($('browsePage').style.display !== 'none'){
       setHero(S.kind, item, catId);
@@ -2335,12 +2514,11 @@ function makeCard(item, catId){
       $('heroPlay').disabled = false;
     }
 
-    if (S.kind==='live'){
-      const m3u8 = `${S.host}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.m3u8`;
+    if (S.kind==='live' || S.kind==='sport'){ /* CHANGED */
+      const m3u8 = playUrlFor(S.kind, item);
       window.open(m3u8,'_blank','noopener');
     } else if (S.kind==='vod'){
-      const ext = (item.container_extension || 'mp4').replace(/^\./,'');
-      const url = `${S.host}/movie/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${item.stream_id}.${ext}`;
+      const url = playUrlFor(S.kind, item);
       window.open(url,'_blank','noopener');
     } else {
       openSeries(item);
@@ -2391,11 +2569,12 @@ function toggleFavSeries(item, btnEl){
 
 /* ---------------- Series drawer ---------------- */
 $('closeDrawer').onclick = ()=> closeDrawer();
-$('copyAll').onclick = ()=>{
+$('copyAll').onclick = async ()=>{
   if (!S.currentSeries) return;
   const links = buildAllEpisodeLinks(S.currentSeasons);
-  copyText(links.join('\n'));
-  setStatus('Copied episode links','ok');
+  const ok = await copyText(links.join('\n'));
+  if (ok) flashStatus('Copied!','ok',900); /* CHANGED */
+  else flashStatus('Copy failed','err',1200);
 };
 $('downloadM3U').onclick = ()=>{
   if (!S.currentSeries) return;
@@ -2472,8 +2651,9 @@ async function openSeries(serie){
         copy.className = 'btn';
         copy.textContent = 'Copy';
         copy.onclick = async ()=>{
-          await copyText(epUrl);
-          setStatus('Copied','ok');
+          const ok = await copyText(epUrl);
+          if (ok) flashStatus('Copied!','ok',900); /* CHANGED */
+          else flashStatus('Copy failed','err',1200);
         };
 
         row.appendChild(title);
@@ -2525,9 +2705,6 @@ function buildM3U(links, title='Playlist'){
     m3u += `#EXTINF:-1,${title} ${String(i+1).padStart(2,'0')}\n${u}\n`;
   });
   return m3u;
-}
-async function copyText(txt){
-  try { await navigator.clipboard.writeText(txt); } catch {}
 }
 function downloadText(txt, filename){
   const blob = new Blob([txt], {type:'audio/x-mpegurl'});
