@@ -1461,6 +1461,13 @@ const HOST_DEFAULT = "http://line.trexlive.me";
 const PROXY_MODE = 'public'; // 'public' | 'none' | 'self'
 const PROXY_BASE = '';
 
+/* Download proxy:
+   Static HTML cannot force Chrome to download cross-origin MP4/MKV files if the media server serves them as playable video.
+   Run the included server.js and open the app through that server.
+   The /download endpoint returns Content-Disposition: attachment, which sends the file to Chrome's download manager.
+*/
+const DOWNLOAD_PROXY_URL = '/download';
+
 /* ---------------- Helpers ---------------- */
 const $ = id => document.getElementById(id);
 const placeholderImg = 'https://via.placeholder.com/300x450?text=No+Image';
@@ -1560,7 +1567,56 @@ const S = {
 };
 
 const ROW_PREVIEW_COUNT = 14;
+
 const SEARCH_LIMIT = 12;
+
+/* ADDED: remember browser login after refresh.
+   Saved only in this browser using localStorage. Logout clears it.
+*/
+const LOGIN_STORAGE_KEY = 'hamzawytv_login_v1';
+const LAST_KIND_STORAGE_KEY = 'hamzawytv_last_kind_v1';
+
+function storageGet(key){
+  try{ return localStorage.getItem(key); }catch{ return null; }
+}
+function storageSet(key, value){
+  try{ localStorage.setItem(key, value); }catch{}
+}
+function storageRemove(key){
+  try{ localStorage.removeItem(key); }catch{}
+}
+function saveBrowserLogin(){
+  if (!S.user || !S.pass) return;
+  storageSet(LOGIN_STORAGE_KEY, JSON.stringify({
+    host: S.host,
+    user: S.user,
+    pass: S.pass,
+    savedAt: Date.now()
+  }));
+}
+function getSavedBrowserLogin(){
+  try{
+    const raw = storageGet(LOGIN_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !data.user || !data.pass) return null;
+    return data;
+  }catch{
+    return null;
+  }
+}
+function clearSavedBrowserLogin(){
+  storageRemove(LOGIN_STORAGE_KEY);
+  storageRemove(LAST_KIND_STORAGE_KEY);
+}
+function saveLastKind(kind){
+  if (kind) storageSet(LAST_KIND_STORAGE_KEY, String(kind));
+}
+function getLastKind(){
+  const k = storageGet(LAST_KIND_STORAGE_KEY);
+  return ['live','vod','series','sport'].includes(k) ? k : '';
+}
+
 
 /* ===== Only show |EN| and |AR| categories (Movies/Series only) ===== */
 function isAllowedCategoryName(name){
@@ -2065,10 +2121,11 @@ async function copyText(txt){
   }
 }
 
-/* ADDED: native Chrome download helpers for MP4/MKV links
-   This does NOT fetch the video into JavaScript and does NOT open a new page.
-   It sends the original MP4/MKV URL to the browser download manager using a hidden target.
-   Chrome will show real download progress in its download UI when the server allows download.
+/* ADDED: Chrome download-manager helpers for MP4/MKV links
+   Important:
+   - A static HTML page cannot force Chrome to download a cross-origin MP4/MKV if that server serves it as inline video.
+   - The reliable solution is to use the included same-origin /download proxy.
+   - /download adds Content-Disposition: attachment, so Chrome receives a real file download and shows progress in Chrome.
 */
 function fileExtFromUrl(url){
   const m = String(url || '').match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
@@ -2096,9 +2153,9 @@ function setDownloadStatus(title, msg, percent, bytesText, kind='ok'){
 function finishNativeDownloadStatus(title){
   setDownloadStatus(
     title,
-    'Sent to Chrome download manager. Check Chrome downloads for progress.',
+    'Sent to Chrome download manager. Chrome will show the download progress.',
     null,
-    'No new page opened',
+    'Stay on this page',
     'ok'
   );
   downloadHideTimer = setTimeout(()=>{
@@ -2124,30 +2181,62 @@ function getNativeDownloadFrame(){
   }
   return frame;
 }
-function sendToChromeDownloadManager(url, filename){
+function buildDownloadUrl(originalUrl, filename){
+  const proxy = String(typeof DOWNLOAD_PROXY_URL !== 'undefined' ? DOWNLOAD_PROXY_URL : '').trim();
+
+  // Preferred/reliable mode: same-origin proxy endpoint that forces Content-Disposition: attachment.
+  if (proxy){
+    const qs = new URLSearchParams();
+    qs.set('url', originalUrl);
+    qs.set('name', filename || 'video.mp4');
+    return `${proxy}?${qs.toString()}`;
+  }
+
+  // Static fallback. This only works if the media server itself allows download.
+  return originalUrl;
+}
+function sendToChromeDownloadManager(originalUrl, filename){
   const frame = getNativeDownloadFrame();
+  const downloadUrl = buildDownloadUrl(originalUrl, filename);
+
   const a = document.createElement('a');
-  a.href = url;
+  a.href = downloadUrl;
   a.download = filename || '';
-  a.target = frame.name;              // prevents the main page from navigating
+  a.target = frame.name;              // keeps the app page in place
   a.rel = 'noopener noreferrer';
   a.style.position = 'fixed';
   a.style.left = '-99999px';
   a.style.top = '-99999px';
   a.style.opacity = '0';
   document.body.appendChild(a);
+
+  // Must be called directly from the user's click path so Chrome treats it as a user download.
   a.click();
+
   setTimeout(()=> a.remove(), 1000);
 }
 function downloadDirectFile(url, title){
   if (!url) return;
+
   const filename = downloadNameFrom(title, url);
-  setDownloadStatus(filename, 'Sending to Chrome download manager…', null, 'No new page opened', 'ok');
+  const usingProxy = !!String(typeof DOWNLOAD_PROXY_URL !== 'undefined' ? DOWNLOAD_PROXY_URL : '').trim();
+
+  setDownloadStatus(
+    filename,
+    usingProxy
+      ? 'Sending to Chrome download manager…'
+      : 'Trying browser download. If nothing happens, run the included server.js proxy.',
+    null,
+    'No new page opened',
+    usingProxy ? 'ok' : 'warn'
+  );
+
   flashStatus('Download sent','ok',900);
   sendToChromeDownloadManager(url, filename);
   finishNativeDownloadStatus(filename);
 }
 if ($('downloadClose')) $('downloadClose').onclick = ()=> $('downloadStatus').classList.add('hide');
+
 async function copySeriesLinks(serie){
   if (!serie) return false;
   const url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_series_info&series_id=${encodeURIComponent(serie.series_id)}`;
@@ -2158,8 +2247,9 @@ async function copySeriesLinks(serie){
 }
 
 /* ---------------- Login (converted to function) ---------------- */
-async function doConnect(){
+async function doConnect(opts={}){
   if (isConnecting || S.loggedIn) return;
+  clearTimeout(autoConnectTimer);
 
   S.user = $('username').value.trim();
   S.pass = $('password').value.trim();
@@ -2175,13 +2265,14 @@ async function doConnect(){
     if (data.user_info && String(data.user_info.auth) === '1'){
       S.loggedIn = true;
       document.body.classList.add('loggedIn');
+      saveBrowserLogin();
 
       $('liveBtn').disabled = false;
       $('moviesBtn').disabled = false;
       $('seriesBtn').disabled = false;
       $('sportBtn').disabled = false; /* CHANGED: enable Sport TV */
       $('toggleSearch').disabled = false;
-      setStatus('Login OK','ok');
+      setStatus(opts.restoring ? 'Login restored' : 'Login OK','ok');
 
       $('heroTitle').textContent = 'Connected';
       $('heroDesc').textContent = 'Use remote arrows + OK. Choose TV / Movie / Seres / Sport TV to start.';
@@ -2191,10 +2282,16 @@ async function doConnect(){
       $('rows').innerHTML = '';
       showBrowsePage(true);
 
-      setTimeout(()=> tvFocus($('moviesBtn')), 60);
+      const lastKind = opts.restoring ? getLastKind() : '';
+      if (lastKind){
+        setTimeout(()=> loadKind(lastKind), 120);
+      } else {
+        setTimeout(()=> tvFocus($('moviesBtn')), 60);
+      }
     } else {
       S.loggedIn = false;
       document.body.classList.remove('loggedIn');
+      if (opts.restoring) clearSavedBrowserLogin();
       setStatus('Invalid login','err');
       setTimeout(()=> tvFocus($('username')), 60);
     }
@@ -2202,7 +2299,7 @@ async function doConnect(){
     console.error(e);
     S.loggedIn = false;
     document.body.classList.remove('loggedIn');
-    setStatus('Cannot connect (API). Check host or proxy.','err');
+    setStatus(opts.restoring ? 'Saved login could not reconnect. Check connection.' : 'Cannot connect (API). Check host or proxy.','err');
     setTimeout(()=> tvFocus($('username')), 60);
   } finally {
     isConnecting = false;
@@ -2210,7 +2307,7 @@ async function doConnect(){
 }
 
 $('connect').onclick = doConnect;
-$('logout').onclick = ()=> location.reload();
+$('logout').onclick = ()=>{ clearSavedBrowserLogin(); location.reload(); };
 
 $('password').addEventListener('input', scheduleAutoConnect);
 $('password').addEventListener('change', scheduleAutoConnect);
@@ -2355,6 +2452,7 @@ $('heroFav').onclick = ()=>{
 /* ---------------- Load kind -> build rows ---------------- */
 async function loadKind(kind){
   if (!S.loggedIn) return setStatus('Login first','err');
+  saveLastKind(kind);
 
   setActiveNav(kind);
 
@@ -2994,11 +3092,32 @@ function downloadText(txt, filename){
   setTimeout(()=> URL.revokeObjectURL(url), 1000);
 }
 
+/* ===== Restore saved browser login on refresh ===== */
+function restoreSavedBrowserLogin(){
+  const saved = getSavedBrowserLogin();
+  if (!saved) return false;
+
+  S.host = trimSlash(saved.host || HOST_DEFAULT);
+  $('username').value = saved.user || '';
+  $('password').value = saved.pass || '';
+
+  if (!$('username').value || !$('password').value) return false;
+
+  setStatus('Restoring login…','warn');
+  setTimeout(()=> doConnect({restoring:true}), 80);
+  return true;
+}
+
 /* ===== Default route ===== */
 history.replaceState({page:'browse'}, '', '#browse');
 
+const didRestoreLogin = restoreSavedBrowserLogin();
+
 /* initial TV focus (login screen) */
-setTimeout(()=> tvFocus($('password').value ? $('password') : $('username')), 120);
+if (!didRestoreLogin){
+  setTimeout(()=> tvFocus($('password').value ? $('password') : $('username')), 120);
+}
+
 </script>
 
 </body>
