@@ -938,6 +938,104 @@
   .favBtn.on{ color:#ffd166; }
   .favBtn.off{ color:rgba(243,245,255,.75); }
 
+
+
+  /* Card action buttons: copy/download/favorite without changing card click behavior */
+  .cardActionRow{
+    position:absolute;
+    top:12px;
+    right:12px;
+    display:flex;
+    gap:8px;
+    z-index:5;
+  }
+  .cardActionRow .favBtn,
+  .cardActionRow .copyBtn,
+  .cardActionRow .dlBtn{
+    position:static;
+    top:auto;
+    right:auto;
+    flex:0 0 auto;
+  }
+  .copyBtn,
+  .dlBtn,
+  .favBtn,
+  .btn,
+  .linkBtn{ touch-action: manipulation; }
+
+  /* Same-page download status. Chrome itself shows the real progress. */
+  #downloadStatus{
+    position:fixed;
+    right:18px;
+    bottom:18px;
+    width:min(420px, calc(100vw - 36px));
+    border-radius:22px;
+    background:
+      radial-gradient(520px 220px at 12% 0%, rgba(229,9,20,.16), transparent 62%),
+      rgba(10,12,18,.94);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 22px 70px rgba(0,0,0,.55);
+    backdrop-filter: blur(18px);
+    z-index:9999;
+    padding:14px 14px 12px;
+  }
+  #downloadStatus.ok{ border-color:rgba(34,197,94,.35); }
+  #downloadStatus.warn{ border-color:rgba(251,191,36,.35); }
+  #downloadStatus.err{ border-color:rgba(239,68,68,.45); }
+  .downloadStatusTop{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+  }
+  #downloadTitle{
+    font-weight:900;
+    font-size:.94rem;
+    line-height:1.25;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #downloadMsg{
+    color:rgba(243,245,255,.72);
+    font-size:.80rem;
+    margin-top:4px;
+    line-height:1.45;
+  }
+  #downloadClose{
+    width:34px;
+    height:34px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    cursor:pointer;
+    font-weight:900;
+  }
+  .downloadBar{
+    height:8px;
+    border-radius:999px;
+    margin-top:12px;
+    background:rgba(255,255,255,.10);
+    overflow:hidden;
+  }
+  #downloadFill{
+    height:100%;
+    width:100%;
+    border-radius:999px;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    animation: downloadPulse 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes downloadPulse{ from{ opacity:.45 } to{ opacity:1 } }
+  .downloadSmall{
+    margin-top:8px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    color:rgba(243,245,255,.58);
+    font-size:.72rem;
+  }
+
   /* Skeleton */
   .skeleton{ animation: pulse 1.05s ease-in-out infinite; background: rgba(255,255,255,.06); }
   @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
@@ -1057,7 +1155,7 @@
   .episodes{ padding: 10px 12px 12px; display:grid; gap:10px; }
   .ep{
     display:grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto auto auto;
     gap:10px;
     align-items:center;
     padding: 10px 10px;
@@ -1418,6 +1516,22 @@
   <div id="seasons"></div>
 </div>
 
+<!-- Same-page download status -->
+<div id="downloadStatus" class="hide warn" role="status" aria-live="polite">
+  <div class="downloadStatusTop">
+    <div style="min-width:0;">
+      <div id="downloadTitle">Download</div>
+      <div id="downloadMsg">Ready</div>
+    </div>
+    <button id="downloadClose" type="button" title="Close">×</button>
+  </div>
+  <div class="downloadBar"><div id="downloadFill"></div></div>
+  <div class="downloadSmall">
+    <span id="downloadPercent">Chrome</span>
+    <span id="downloadBytes">Download manager</span>
+  </div>
+</div>
+
 <script>
 /* =========================
    CONFIG: Host is hidden
@@ -1433,6 +1547,14 @@ const GITHUB_IMG_BASE = "https://raw.githubusercontent.com/a860h040/TV/main";
 /* ---------------- Proxy (kept) ---------------- */
 const PROXY_MODE = 'public'; // 'public' | 'none' | 'self'
 const PROXY_BASE = '';
+
+/* Same-origin helpers for faster loading + real Chrome downloads.
+   Use the included server.js and open http://localhost:8080 for best results.
+   - /api avoids slow public CORS proxies for the player API.
+   - /download forces MP4/MKV files into Chrome's download manager without opening a new page.
+*/
+const API_PROXY_URL = '/api';
+const DOWNLOAD_PROXY_URL = '/download';
 
 /* ---------------- Helpers ---------------- */
 const $ = id => document.getElementById(id);
@@ -1480,9 +1602,23 @@ function wrapUrl(url){
   if (PROXY_MODE === 'self') return PROXY_BASE + url;
   return url;
 }
+function fetchWithTimeout(url, ms=9000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=> ctrl.abort(), ms);
+  return fetch(url, { cache:'no-store', signal: ctrl.signal }).finally(()=> clearTimeout(t));
+}
+function apiProxyUrl(url){
+  const p = String(typeof API_PROXY_URL !== 'undefined' ? API_PROXY_URL : '').trim();
+  if (!p) return '';
+  return `${p}?url=${encodeURIComponent(url)}`;
+}
 async function fetchJsonRobust(url){
   const direct = wrapUrl(url);
+  const viaApi = apiProxyUrl(url);
+
+  // Speed fix: try the same-origin /api proxy first when available. It avoids slow public CORS proxies.
   const publicTries = [
+    ...(viaApi ? [viaApi] : []),
     direct,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -1493,7 +1629,7 @@ async function fetchJsonRobust(url){
   let lastErr = null;
   for (const u of tries){
     try{
-      const r = await fetch(u, { cache:'no-store' });
+      const r = await fetchWithTimeout(u, 9000);
       const text = await r.text();
       const cleaned = pickJsonText(text);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -1510,6 +1646,38 @@ const store = {
   get favCount(){ return JSON.parse(localStorage.getItem('fav_series_count')||'{}'); },
   set favCount(v){ localStorage.setItem('fav_series_count', JSON.stringify(v)); },
 };
+
+/* ---------------- Remember browser login ---------------- */
+const AUTH_STORE_KEY = 'hamzawytv_saved_login_v3';
+const LAST_KIND_KEY = 'hamzawytv_last_kind_v3';
+function saveAuthToBrowser(){
+  try{
+    localStorage.setItem(AUTH_STORE_KEY, JSON.stringify({
+      user: S.user,
+      pass: S.pass,
+      host: S.host,
+      savedAt: Date.now()
+    }));
+  }catch{}
+}
+function getSavedAuth(){
+  try{
+    const raw = localStorage.getItem(AUTH_STORE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch{ return null; }
+}
+function clearSavedAuth(){
+  try{
+    localStorage.removeItem(AUTH_STORE_KEY);
+    localStorage.removeItem(LAST_KIND_KEY);
+  }catch{}
+}
+function saveLastKind(kind){
+  try{ if (kind) localStorage.setItem(LAST_KIND_KEY, kind); }catch{}
+}
+function getLastKind(){
+  try{ return localStorage.getItem(LAST_KIND_KEY) || 'vod'; }catch{ return 'vod'; }
+}
 
 /* ---------------- State ---------------- */
 const S = {
@@ -1535,7 +1703,10 @@ const S = {
   seeAll: { open:false, catId:'', catName:'', catKey:'' },
 
   // series drawer state
-  seriesOpen: { seriesId:'', title:'', links:[] }
+  seriesOpen: { seriesId:'', title:'', links:[] },
+
+  // cached episode links for copy/download
+  seriesLinksCache: new Map()
 };
 
 const ROW_PREVIEW_COUNT = 14;
@@ -2172,19 +2343,144 @@ function playUrlFor(kind, item){
   return '';
 }
 
-/* ===== FIXED: Download helper (NO new window) ===== */
+async function fetchSeriesEpisodeLinks(seriesItem){
+  if (!seriesItem || !seriesItem.series_id) return [];
+  const seriesId = String(seriesItem.series_id);
+  if (S.seriesLinksCache && S.seriesLinksCache.has(seriesId)) return S.seriesLinksCache.get(seriesId);
+
+  const title = String(seriesItem.name || 'Series');
+  const u = encodeURIComponent(S.user);
+  const p = encodeURIComponent(S.pass);
+  const infoUrl = `${S.host}/player_api.php?username=${u}&password=${p}&action=get_series_info&series_id=${encodeURIComponent(seriesId)}`;
+  const data = await fetchJsonRobust(infoUrl);
+  const episodesBySeason = data && data.episodes ? data.episodes : {};
+  const seasons = Object.keys(episodesBySeason).sort((a,b)=> Number(a)-Number(b));
+  const links = [];
+
+  seasons.forEach(seasonNum=>{
+    const eps = Array.isArray(episodesBySeason[seasonNum]) ? episodesBySeason[seasonNum] : [];
+    eps.forEach(ep=>{
+      const epId = ep.id || ep.episode_id || ep.stream_id;
+      if (!epId) return;
+      const ext = (ep.container_extension || 'mp4').replace(/^\./,'');
+      const epName = ep.title || ep.name || `Episode ${ep.episode_num || ''}`.trim() || 'Episode';
+      const url = `${S.host}/series/${u}/${p}/${epId}.${ext}`;
+      links.push({
+        season: seasonNum,
+        episode: epName,
+        title: `${title} - S${seasonNum} - ${epName}`,
+        url,
+        filename: downloadNameFrom(`${title} - S${seasonNum} - ${epName}`, url)
+      });
+    });
+  });
+
+  if (S.seriesLinksCache) S.seriesLinksCache.set(seriesId, links);
+  return links;
+}
+async function copySeriesLinks(seriesItem){
+  try{
+    setStatus('Preparing series links…','warn');
+    const links = await fetchSeriesEpisodeLinks(seriesItem);
+    if (!links.length) return flashStatus('No links found','err',1200);
+    const ok = await copyText(links.map(x=> x.url).join('\n'));
+    if (ok) flashStatus('Series links copied!','ok',900);
+    else flashStatus('Copy failed','err',1200);
+  }catch(e){
+    console.error(e);
+    flashStatus('Series copy failed','err',1200);
+  }
+}
+
+/* ===== Chrome download manager helper: same page, no new tab ===== */
+function fileExtFromUrl(url){
+  const m = String(url || '').match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
+  return (m ? m[1] : 'mp4').replace(/^\./,'');
+}
+function downloadNameFrom(title, url){
+  const ext = fileExtFromUrl(url);
+  const base = safeName(title || 'video') || 'video';
+  return base.toLowerCase().endsWith('.' + ext.toLowerCase()) ? base : `${base}.${ext}`;
+}
+let downloadHideTimer = null;
+function setDownloadStatus(title, msg, kind='ok'){
+  const box = $('downloadStatus');
+  if (!box) return;
+  clearTimeout(downloadHideTimer);
+  box.classList.remove('hide','ok','warn','err');
+  box.classList.add(kind);
+  if ($('downloadTitle')) $('downloadTitle').textContent = title || 'Download';
+  if ($('downloadMsg')) $('downloadMsg').textContent = msg || '';
+  if ($('downloadFill')) $('downloadFill').style.width = '100%';
+  if ($('downloadPercent')) $('downloadPercent').textContent = 'Chrome';
+  if ($('downloadBytes')) $('downloadBytes').textContent = 'Download manager';
+}
+function finishDownloadStatus(title, kind='ok'){
+  setDownloadStatus(title, 'Sent to Chrome download manager. Chrome will show the real progress.', kind);
+  downloadHideTimer = setTimeout(()=>{
+    const box = $('downloadStatus');
+    if (box) box.classList.add('hide');
+  }, 6500);
+}
+function getNativeDownloadFrame(){
+  let frame = document.getElementById('nativeDownloadFrame');
+  if (!frame){
+    frame = document.createElement('iframe');
+    frame.id = 'nativeDownloadFrame';
+    frame.name = 'nativeDownloadFrame';
+    frame.setAttribute('aria-hidden','true');
+    frame.style.position = 'fixed';
+    frame.style.left = '-99999px';
+    frame.style.top = '-99999px';
+    frame.style.width = '1px';
+    frame.style.height = '1px';
+    frame.style.opacity = '0';
+    frame.style.pointerEvents = 'none';
+    document.body.appendChild(frame);
+  }
+  return frame;
+}
+function buildDownloadUrl(originalUrl, filename){
+  const proxy = String(typeof DOWNLOAD_PROXY_URL !== 'undefined' ? DOWNLOAD_PROXY_URL : '').trim();
+  if (proxy){
+    const qs = new URLSearchParams();
+    qs.set('url', originalUrl);
+    qs.set('name', filename || 'video.mp4');
+    return `${proxy}?${qs.toString()}`;
+  }
+  return originalUrl;
+}
 function startDownload(url, filename){
   if (!url) return;
-  flashStatus('Downloading…','warn',900);
+  const finalName = filename || downloadNameFrom('video', url);
+  const proxyOn = !!String(typeof DOWNLOAD_PROXY_URL !== 'undefined' ? DOWNLOAD_PROXY_URL : '').trim();
 
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.setAttribute('aria-hidden','true');
-  iframe.src = url;
-  document.body.appendChild(iframe);
+  setDownloadStatus(
+    finalName,
+    proxyOn ? 'Sending to Chrome download manager…' : 'Trying browser download. Use server.js if Chrome does not start it.',
+    proxyOn ? 'ok' : 'warn'
+  );
 
-  setTimeout(()=>{ try{ iframe.remove(); }catch{} }, 15000);
+  const frame = getNativeDownloadFrame();
+  const a = document.createElement('a');
+  a.href = buildDownloadUrl(url, finalName);
+  a.download = finalName;
+  a.target = frame.name;
+  a.rel = 'noopener noreferrer';
+  a.style.position = 'fixed';
+  a.style.left = '-99999px';
+  a.style.top = '-99999px';
+  a.style.opacity = '0';
+  document.body.appendChild(a);
+
+  // Keep this in the direct click path so Chrome treats it as a user download.
+  a.click();
+  setTimeout(()=> a.remove(), 1000);
+
+  flashStatus('Download sent','ok',900);
+  finishDownloadStatus(finalName, proxyOn ? 'ok' : 'warn');
 }
+if ($('downloadClose')) $('downloadClose').onclick = ()=> $('downloadStatus').classList.add('hide');
 
 async function copyText(txt){
   try{
@@ -2211,7 +2507,7 @@ async function copyText(txt){
 }
 
 /* ---------------- Login ---------------- */
-async function doConnect(){
+async function doConnect(opts={}){
   if (isConnecting || S.loggedIn) return;
 
   S.user = $('username').value.trim();
@@ -2219,7 +2515,7 @@ async function doConnect(){
   if (!S.user || !S.pass) return setStatus('Enter username & password','err');
 
   isConnecting = true;
-  setStatus('Connecting…','warn');
+  setStatus(opts.silent ? 'Restoring login…' : 'Connecting…','warn');
 
   try{
     const url = `${S.host}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`;
@@ -2235,6 +2531,7 @@ async function doConnect(){
       $('sportBtn').disabled = false;
       $('toggleSearch').disabled = false;
       setStatus('Login OK','ok');
+      saveAuthToBrowser();
 
       $('heroTitle').textContent = 'Connected';
       $('heroDesc').textContent = 'Use remote arrows + OK. Choose TV / Movie / Seres / Sport TV to start.';
@@ -2245,13 +2542,20 @@ async function doConnect(){
       if ($('rows')) $('rows').innerHTML = '';
       showBrowsePage(true);
 
-      // restore route from hash (if any) AFTER login
-      restoreFromHashAfterLogin().catch(()=>{});
+      const hasHash = !!(location.hash || '').replace(/^#/,'').trim();
+      if (hasHash){
+        restoreFromHashAfterLogin().catch(()=>{});
+      } else {
+        // Speed/usability fix: after login/refresh, load the last section automatically.
+        const k = getLastKind() || 'vod';
+        setTimeout(()=> loadKind(k, { pushState:false }).catch(()=>{}), 120);
+      }
 
-      setTimeout(()=> tvFocus($('moviesBtn')), 60);
+      setTimeout(()=> tvFocus($(getLastKind()==='live' ? 'liveBtn' : getLastKind()==='series' ? 'seriesBtn' : getLastKind()==='sport' ? 'sportBtn' : 'moviesBtn')), 160);
     } else {
       S.loggedIn = false;
       document.body.classList.remove('loggedIn');
+      clearSavedAuth();
       setStatus('Invalid login','err');
       setTimeout(()=> tvFocus($('username')), 60);
     }
@@ -2259,6 +2563,7 @@ async function doConnect(){
     console.error(e);
     S.loggedIn = false;
     document.body.classList.remove('loggedIn');
+    if (!opts.silent) clearSavedAuth();
     setStatus('Cannot connect (API). Check host or proxy.','err');
     setTimeout(()=> tvFocus($('username')), 60);
   } finally {
@@ -2266,8 +2571,8 @@ async function doConnect(){
   }
 }
 
-$('connect').onclick = doConnect;
-$('logout').onclick = ()=> location.reload();
+$('connect').onclick = ()=> doConnect();
+$('logout').onclick = ()=>{ clearSavedAuth(); location.reload(); };
 
 $('password').addEventListener('input', scheduleAutoConnect);
 $('password').addEventListener('change', scheduleAutoConnect);
@@ -2350,10 +2655,10 @@ function setHero(kind, item, catId){
 
   $('heroPlay').disabled = false;
 
-  const canCopy = (kind==='live' || kind==='sport' || kind==='vod');
+  const canCopy = (kind==='live' || kind==='sport' || kind==='vod' || kind==='series');
   $('heroCopy').disabled = !canCopy;
 
-  $('heroDownload').disabled = (kind !== 'vod');
+  $('heroDownload').disabled = !(kind === 'vod' || kind === 'series');
 
   if (kind === 'series'){
     $('heroFav').disabled = false;
@@ -2382,6 +2687,13 @@ $('heroPlay').onclick = ()=>{
 
 $('heroCopy').onclick = async ()=>{
   const {kind, item} = S.hero;
+  if (!item) return;
+
+  if (kind === 'series'){
+    await copySeriesLinks(item);
+    return;
+  }
+
   const url = playUrlFor(kind, item);
   if (!url) return;
   const ok = await copyText(url);
@@ -2391,11 +2703,18 @@ $('heroCopy').onclick = async ()=>{
 
 $('heroDownload').onclick = ()=>{
   const {kind, item} = S.hero;
-  if (kind !== 'vod' || !item) return;
-  const url = playUrlFor('vod', item);
-  const ext = (item.container_extension || 'mp4').replace(/^\./,'');
-  const filename = `${safeName(item.name || 'movie')}.${ext}`;
-  startDownload(url, filename);
+  if (!item) return;
+
+  if (kind === 'vod'){
+    const url = playUrlFor('vod', item);
+    const filename = downloadNameFrom(item.name || 'movie', url);
+    startDownload(url, filename);
+    return;
+  }
+
+  if (kind === 'series'){
+    openSeries(item);
+  }
 };
 
 $('heroFav').onclick = ()=>{
@@ -2443,12 +2762,63 @@ function buildCard(kind, item, catId, inGrid=false){
     </div>
   `;
 
+  const actions = document.createElement('div');
+  actions.className = 'cardActionRow';
+
+  // Copy button on every playable card.
+  if (kind === 'live' || kind === 'sport' || kind === 'vod' || kind === 'series'){
+    const copy = document.createElement('button');
+    copy.className = 'copyBtn';
+    copy.type = 'button';
+    copy.title = (kind === 'series') ? 'Copy all episode links' : 'Copy link';
+    copy.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+      <path d="M9 9h10v10H9V9Z" stroke="currentColor" stroke-width="2"/>
+      <path d="M5 5h10v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>`;
+    copy.onclick = async (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      if (kind === 'series'){
+        await copySeriesLinks(item);
+      } else {
+        const url = playUrlFor(kind, item);
+        const ok = await copyText(url);
+        if (ok) flashStatus('Copied!','ok',900);
+        else flashStatus('Copy failed','err',1200);
+      }
+    };
+    actions.appendChild(copy);
+  }
+
+  // Download button for movies. For series, button opens episodes so user can download each MP4/MKV.
+  if (kind === 'vod' || kind === 'series'){
+    const dl = document.createElement('button');
+    dl.className = 'dlBtn';
+    dl.type = 'button';
+    dl.title = (kind === 'series') ? 'Open episodes to download' : 'Download';
+    dl.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+      <path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>`;
+    dl.onclick = (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      if (kind === 'vod'){
+        const url = playUrlFor('vod', item);
+        startDownload(url, downloadNameFrom(item.name || 'movie', url));
+      } else {
+        openSeries(item);
+      }
+    };
+    actions.appendChild(dl);
+  }
+
   // Series favorite button (kept feature)
   if (kind === 'series'){
-    const fav = document.createElement('div');
+    const fav = document.createElement('button');
     const sid = String(item.series_id || '');
     const isFav = !!store.favSeries[sid];
     fav.className = 'favBtn ' + (isFav ? 'on' : 'off');
+    fav.type = 'button';
     fav.title = isFav ? 'Unfavorite' : 'Favorite';
     fav.textContent = '★';
     fav.addEventListener('click', (e)=>{
@@ -2462,8 +2832,10 @@ function buildCard(kind, item, catId, inGrid=false){
         $('heroFav').innerHTML = nowFav ? '★ Favorited' : '★ Favorite';
       }
     });
-    card.appendChild(fav);
+    actions.appendChild(fav);
   }
+
+  if (actions.children.length) card.appendChild(actions);
 
   card.addEventListener('focus', ()=>{ clearTvFocus(); card.classList.add('tv-focus'); });
   card.addEventListener('blur', ()=> card.classList.remove('tv-focus'));
@@ -2698,6 +3070,7 @@ async function loadKind(kind, opts={}){
 
   // Reset kind state
   S.kind = kind;
+  saveLastKind(kind);
   S.categories = [];
   S.catByKey = new Map();
   S.catKeyById = new Map();
@@ -2952,21 +3325,26 @@ async function openSeries(seriesItem){
         const epName = ep.title || ep.name || `Episode ${ep.episode_num || ''}`.trim() || 'Episode';
 
         const url = `${S.host}/series/${u}/${p}/${epId}.${ext}`;
-        links.push({ title: `${title} - S${seasonNum} - ${epName}`, url });
+        const fullTitle = `${title} - S${seasonNum} - ${epName}`;
+        const filename = downloadNameFrom(fullTitle, url);
+        links.push({ title: fullTitle, url, filename });
 
         const row = document.createElement('div');
         row.className = 'ep';
         row.innerHTML = `
           <div class="epName">${escapeHtml(epName)}</div>
           <a class="linkBtn" href="${url}" target="_blank" rel="noopener">Play</a>
-          <button class="btn" type="button">Copy</button>
+          <button class="btn" type="button" data-copy>Copy</button>
+          <button class="btn primary" type="button" data-download>Download</button>
         `;
-        const copyBtn = row.querySelector('button.btn');
+        const copyBtn = row.querySelector('[data-copy]');
         copyBtn.onclick = async ()=>{
           const ok = await copyText(url);
           if (ok) flashStatus('Copied!','ok',900);
           else flashStatus('Copy failed','err',1200);
         };
+        const dlBtn = row.querySelector('[data-download]');
+        dlBtn.onclick = ()=> startDownload(url, filename);
 
         wrap.appendChild(row);
       });
@@ -2976,6 +3354,7 @@ async function openSeries(seriesItem){
     });
 
     S.seriesOpen = { seriesId, title, links };
+    if (S.seriesLinksCache) S.seriesLinksCache.set(seriesId, links);
   }catch(e){
     console.error(e);
     $('seasons').innerHTML = `<div style="color:#ef4444; padding:10px 0;">Failed to load series info.</div>`;
@@ -3058,9 +3437,19 @@ async function restoreFromHashAfterLogin(){
 }
 
 /* =========================================================
-   Boot: focus login
+   Boot: remember browser login + focus login
    ========================================================= */
-setTimeout(()=> tvFocus($('connect')), 80);
+setTimeout(()=>{
+  const saved = getSavedAuth();
+  if (saved && saved.user && saved.pass){
+    $('username').value = saved.user;
+    $('password').value = saved.pass;
+    if (saved.host) S.host = trimSlash(saved.host);
+    doConnect({ silent:true });
+  } else {
+    tvFocus($('connect'));
+  }
+}, 80);
 </script>
 
 </body>
