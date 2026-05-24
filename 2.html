@@ -960,7 +960,6 @@
   .copyBtn,
   .dlBtn,
   .favBtn,
-  .catCopyBtn,
   .btn,
   .linkBtn{ touch-action: manipulation; }
 
@@ -1249,39 +1248,30 @@
 
 
 
-  /* Category-card copy command button */
+  /* Category card copy button: copies one curl command for every file in that category */
   .catCopyBtn{
     position:absolute;
     top:12px;
     right:12px;
+    width:42px;
     height:42px;
-    width:auto;
-    min-width:42px;
-    padding:0 12px;
     border-radius:999px;
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:7px;
     background:rgba(0,0,0,.62);
     border:1px solid rgba(255,255,255,.18);
     color:var(--text);
     backdrop-filter:blur(12px);
-    font-weight:900;
-    font-size:.78rem;
-    letter-spacing:.15px;
     z-index:6;
     cursor:pointer;
-    transition:transform .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease), filter .18s var(--ease);
+    transition:transform .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease);
   }
   .catCopyBtn:hover{
     transform:scale(1.06);
     background:rgba(229,9,20,.72);
     box-shadow:0 0 0 7px rgba(229,9,20,.14);
-    filter:brightness(1.05);
   }
-  .catCopyBtn:active{ transform:scale(.99); }
-  .catCopyBtn svg{ flex:0 0 auto; }
 
   /* =========================================================
      RESPONSIVE
@@ -2543,77 +2533,6 @@ async function copyText(txt){
   }
 }
 
-/* ===== Category full-download command copy helper =====
-   Copies one Termux/Linux command that downloads every playable file in a category.
-   Example output:
-   mkdir -p ~/storage/downloads; for url in "http://link1" "http://link2"; do curl -L -o ~/storage/downloads/"$(basename "${url%%\?*}")" "$url"; done
-*/
-function shellDoubleQuote(s){
-  return `"${String(s || '')
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
-    .replace(/`/g, '\\`')
-    .replace(/\r?\n/g, '')}"`;
-}
-
-function buildCurlCategoryCommand(urls){
-  const cleanUrls = [...new Set((urls || []).filter(Boolean))];
-  return `mkdir -p ~/storage/downloads; for url in ${cleanUrls.map(shellDoubleQuote).join(' ')}; do curl -L -o ~/storage/downloads/"$(basename "${url%%\\?*}")" "$url"; done`;
-}
-
-async function getCategoryDownloadUrls(catId){
-  const items = await fetchCategoryItems(catId);
-  if (!Array.isArray(items) || !items.length) return [];
-
-  // Live / Sport / Movies: direct playable URLs.
-  if (S.kind === 'live' || S.kind === 'sport' || S.kind === 'vod'){
-    return items.map(item => playUrlFor(S.kind, item)).filter(Boolean);
-  }
-
-  // Series: collect every episode URL from every series in the category.
-  if (S.kind === 'series'){
-    const urls = [];
-    for (const seriesItem of items){
-      try{
-        const links = await fetchSeriesEpisodeLinks(seriesItem);
-        links.forEach(x=>{
-          if (x && x.url) urls.push(x.url);
-        });
-      }catch(e){
-        console.warn('Could not fetch episode links for:', seriesItem && seriesItem.name, e);
-      }
-    }
-    return urls;
-  }
-
-  return [];
-}
-
-async function copyCategoryDownloadCommand(catId, catName='Category'){
-  try{
-    if (!S.loggedIn) return setStatus('Login first','err');
-
-    setStatus(`Preparing ${catName} download command…`, 'warn');
-    const urls = await getCategoryDownloadUrls(catId);
-
-    if (!urls.length){
-      flashStatus('No download links found','err',1400);
-      return;
-    }
-
-    const command = buildCurlCategoryCommand(urls);
-    const ok = await copyText(command);
-
-    if (ok) flashStatus(`Copied command for ${urls.length} file${urls.length === 1 ? '' : 's'}!`, 'ok', 1400);
-    else flashStatus('Copy failed','err',1400);
-  }catch(e){
-    console.error(e);
-    flashStatus('Command copy failed','err',1400);
-  }
-}
-
-
 /* ---------------- Login ---------------- */
 async function doConnect(opts={}){
   if (isConnecting || S.loggedIn) return;
@@ -3000,6 +2919,67 @@ function toggleFavSeries(seriesItem){
   }
 }
 
+
+/* Category-card command copy helpers: minimal add-on, does not change login/connect */
+function shellDoubleQuote(s){
+  return '"' + String(s || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\$/g, '\\$')
+    .replace(/`/g, '\\`')
+    .replace(/\r?\n/g, '') + '"';
+}
+
+function buildCurlCategoryCommand(urls){
+  const cleanUrls = [...new Set((urls || []).filter(Boolean))];
+  return 'mkdir -p ~/storage/downloads; for url in ' +
+    cleanUrls.map(shellDoubleQuote).join(' ') +
+    '; do curl -L -o ~/storage/downloads/"$(basename "${url%%\\?*}")" "$url"; done';
+}
+
+async function getCategoryDownloadUrls(catId){
+  const items = await fetchCategoryItems(catId);
+  if (!Array.isArray(items) || !items.length) return [];
+
+  if (S.kind === 'vod' || S.kind === 'live' || S.kind === 'sport'){
+    return items.map(item => playUrlFor(S.kind, item)).filter(Boolean);
+  }
+
+  if (S.kind === 'series'){
+    const urls = [];
+    for (const seriesItem of items){
+      try{
+        const links = await fetchSeriesEpisodeLinks(seriesItem);
+        links.forEach(x=>{ if (x && x.url) urls.push(x.url); });
+      }catch(e){
+        console.warn('Failed to collect series links:', seriesItem && seriesItem.name, e);
+      }
+    }
+    return urls;
+  }
+
+  return [];
+}
+
+async function copyCategoryDownloadCommand(catId, catName='Category'){
+  try{
+    setStatus(`Preparing ${catName} command…`, 'warn');
+    const urls = await getCategoryDownloadUrls(catId);
+
+    if (!urls.length){
+      flashStatus('No download links found', 'err', 1400);
+      return;
+    }
+
+    const command = buildCurlCategoryCommand(urls);
+    const ok = await copyText(command);
+    flashStatus(ok ? `Copied ${urls.length} links command!` : 'Copy failed', ok ? 'ok' : 'err', 1400);
+  }catch(e){
+    console.error(e);
+    flashStatus('Command copy failed', 'err', 1400);
+  }
+}
+
 /* =========================================================
    CATEGORY-FIRST FLOW
    ========================================================= */
@@ -3020,7 +3000,6 @@ function renderCategoryTiles(){
     card.className = 'catCard';
     card.tabIndex = 0;
     card.setAttribute('role','button');
-    card.title = `Open ${disp || 'Category'}`;
 
     const img = document.createElement('img');
     img.className = 'catImg';
@@ -3038,26 +3017,17 @@ function renderCategoryTiles(){
     copyBtn.className = 'catCopyBtn';
     copyBtn.type = 'button';
     copyBtn.title = `Copy download command for ${disp || 'Category'}`;
-    copyBtn.setAttribute('aria-label', `Copy download command for ${disp || 'Category'}`);
     copyBtn.innerHTML = `
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
         <path d="M9 9h10v10H9V9Z" stroke="currentColor" stroke-width="2"/>
         <path d="M5 5h10v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      <span>Copy</span>
     `;
     copyBtn.onclick = async (e)=>{
       e.preventDefault();
       e.stopPropagation();
       await copyCategoryDownloadCommand(catId, disp || 'Category');
     };
-    copyBtn.addEventListener('keydown', (e)=>{
-      if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
-        e.preventDefault();
-        e.stopPropagation();
-        copyBtn.click();
-      }
-    });
 
     const info = document.createElement('div');
     info.className = 'catInfo';
