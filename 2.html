@@ -2921,59 +2921,155 @@ function toggleFavSeries(seriesItem){
 
 
 /* Category-card command copy helpers: minimal add-on, does not change login/connect */
-function shellDoubleQuote(s){
-  return '"' + String(s || '')
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
-    .replace(/`/g, '\\`')
-    .replace(/\r?\n/g, '') + '"';
+function psSingleQuoted(s){
+  return `'${String(s || '').replace(/\r?\n/g, ' ').trim().replace(/'/g, "''")}'`;
 }
 
-function buildCurlCategoryCommand(urls){
-  const cleanUrls = [...new Set((urls || []).filter(Boolean))];
-  return 'mkdir -p ~/storage/downloads; for url in ' +
-    cleanUrls.map(shellDoubleQuote).join(' ') +
-    '; do curl -L -o ~/storage/downloads/"$(basename "${url%%\\?*}")" "$url"; done';
+function cleanDownloadTitle(title, fallback='video'){
+  return String(title || fallback || 'video')
+    .replace(/\r?\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-async function getCategoryDownloadUrls(catId){
+function downloadEntryName(title, url){
+  const cleanTitle = cleanDownloadTitle(title, 'video');
+  if (typeof downloadNameFrom === 'function') return downloadNameFrom(cleanTitle, url);
+  const extMatch = String(url || '').match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
+  const ext = extMatch ? extMatch[1] : 'mp4';
+  return `${cleanTitle}.${ext}`;
+}
+
+function buildPowerShellCategoryCommand(downloads, categoryName='Category'){
+  const seen = new Set();
+  const cleanDownloads = (downloads || [])
+    .map(d=>{
+      const url = String((typeof d === 'string' ? d : d && d.url) || '').replace(/\r?\n/g, '').trim();
+      if (!url || seen.has(url)) return null;
+      seen.add(url);
+
+      const title = cleanDownloadTitle(
+        typeof d === 'string' ? '' : (d.title || d.name || d.filename || ''),
+        'video'
+      );
+      const filename = cleanDownloadTitle(
+        typeof d === 'string' ? downloadEntryName('', url) : (d.filename || downloadEntryName(title, url)),
+        downloadEntryName(title, url)
+      );
+
+      return { url, title, filename };
+    })
+    .filter(Boolean);
+
+  const categoryLiteral = psSingleQuoted(categoryName || 'Category');
+  const downloadsBlock = cleanDownloads
+    .map(d=>`  @{ Url = ${psSingleQuoted(d.url)}; Name = ${psSingleQuoted(d.filename)} }`)
+    .join('\n');
+
+  return `$category = ${categoryLiteral}
+$safeCategory = $category -replace '[<>:"/\\|?*]', '_'
+$safeCategory = $safeCategory.Trim()
+if ([string]::IsNullOrWhiteSpace($safeCategory)) {
+  $safeCategory = "Category"
+}
+
+$dir = Join-Path "D:\Downloads" $safeCategory
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+$downloads = @(
+${downloadsBlock}
+)
+
+foreach ($item in $downloads) {
+  $url = ([string]$item.Url).Trim()
+  $file = ([string]$item.Name).Trim()
+
+  # Use the movie/episode name from the app, not the numeric ID from the URL.
+  if ([string]::IsNullOrWhiteSpace($file)) {
+    $file = [System.IO.Path]::GetFileName(([Uri]$url).AbsolutePath)
+  }
+
+  if ([string]::IsNullOrWhiteSpace($file)) {
+    $file = "download_$((Get-Date).ToString('yyyyMMdd_HHmmss')).bin"
+  }
+
+  $file = [System.IO.Path]::GetFileName($file)
+  $file = $file -replace '[<>:"/\\|?*]', '_'
+  $file = $file.Trim()
+
+  if ($file.Length -gt 180) {
+    $ext = [System.IO.Path]::GetExtension($file)
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($file)
+    $file = $base.Substring(0, [Math]::Min(160, $base.Length)) + $ext
+  }
+
+  $out = Join-Path $dir $file
+
+  Write-Host "Downloading to: $dir"
+  Write-Host "Downloading: $file"
+  curl.exe -L --fail --continue-at - -o "$out" "$url"
+
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "Finished: $file"
+  } else {
+    Write-Host "Failed: $url"
+  }
+
+  Write-Host ""
+}`;
+}
+
+async function getCategoryDownloadEntries(catId){
   const items = await fetchCategoryItems(catId);
   if (!Array.isArray(items) || !items.length) return [];
 
   if (S.kind === 'vod' || S.kind === 'live' || S.kind === 'sport'){
-    return items.map(item => playUrlFor(S.kind, item)).filter(Boolean);
+    return items
+      .map(item=>{
+        const url = playUrlFor(S.kind, item);
+        const title = cleanDownloadTitle(item.name || item.title || item.stream_display_name || item.stream_id || 'video', 'video');
+        return { url, title, filename: downloadEntryName(title, url) };
+      })
+      .filter(x=> x && x.url);
   }
 
   if (S.kind === 'series'){
-    const urls = [];
+    const entries = [];
     for (const seriesItem of items){
       try{
         const links = await fetchSeriesEpisodeLinks(seriesItem);
-        links.forEach(x=>{ if (x && x.url) urls.push(x.url); });
+        links.forEach(x=>{
+          if (x && x.url){
+            const title = cleanDownloadTitle(x.title || x.episode || seriesItem.name || 'Episode', 'Episode');
+            entries.push({
+              url: x.url,
+              title,
+              filename: x.filename || downloadEntryName(title, x.url)
+            });
+          }
+        });
       }catch(e){
         console.warn('Failed to collect series links:', seriesItem && seriesItem.name, e);
       }
     }
-    return urls;
+    return entries;
   }
 
   return [];
 }
-
 async function copyCategoryDownloadCommand(catId, catName='Category'){
   try{
     setStatus(`Preparing ${catName} command…`, 'warn');
-    const urls = await getCategoryDownloadUrls(catId);
+    const entries = await getCategoryDownloadEntries(catId);
 
-    if (!urls.length){
+    if (!entries.length){
       flashStatus('No download links found', 'err', 1400);
       return;
     }
 
-    const command = buildCurlCategoryCommand(urls);
+    const command = buildPowerShellCategoryCommand(entries, catName);
     const ok = await copyText(command);
-    flashStatus(ok ? `Copied ${urls.length} links command!` : 'Copy failed', ok ? 'ok' : 'err', 1400);
+    flashStatus(ok ? `Copied ${entries.length} named downloads!` : 'Copy failed', ok ? 'ok' : 'err', 1400);
   }catch(e){
     console.error(e);
     flashStatus('Command copy failed', 'err', 1400);
