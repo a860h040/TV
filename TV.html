@@ -1584,6 +1584,7 @@
         </div>
         <div class="headBtns">
           <button id="catBackBtn" class="ghostBtn">Back</button>
+          <button id="catCopyLinksBtn" class="ghostBtn">Copy Category Links</button>
           <button id="catSeeAllBtn" class="ghostBtn">See all</button>
         </div>
       </div>
@@ -2257,6 +2258,10 @@ $('catBackBtn').onclick = ()=>{
   else showCategoriesScreen(true);
 };
 
+$('catCopyLinksBtn').onclick = ()=>{
+  copyCurrentCategoryLinks().catch(()=>{});
+};
+
 $('catSeeAllBtn').onclick = ()=>{
   if (!S.catView.open) return;
   openCategoryPage(S.catView.catId, S.catView.catName, true, S.catView.catKey).catch(()=>{});
@@ -2527,6 +2532,40 @@ async function copySeriesLinks(seriesItem){
   }catch(e){
     console.error(e);
     flashStatus('Series copy failed','err',1200);
+  }
+}
+
+function formatChannelCopyLine(kind, item){
+  const name = String((item && (item.name || item.title)) || 'Channel').trim();
+  const url = playUrlFor(kind, item);
+  return url ? `${name} - ${url}` : '';
+}
+
+async function copyCurrentCategoryLinks(){
+  try{
+    if (!S.catView || !S.catView.open || !S.catView.catId){
+      return flashStatus('Open a category first','err',1200);
+    }
+
+    setStatus('Preparing category links…','warn');
+
+    const items = await fetchCategoryItems(S.catView.catId);
+    const lines = items
+      .map(item => formatChannelCopyLine(S.kind, item))
+      .filter(Boolean);
+
+    if (!lines.length){
+      return flashStatus('No links found','err',1200);
+    }
+
+    const header = `# ${S.catView.catName || 'Category'} (${lines.length} channels)`;
+    const ok = await copyText([header, ...lines].join('\n'));
+
+    if (ok) flashStatus(`Copied ${lines.length} channel links!`,'ok',1200);
+    else flashStatus('Copy failed','err',1200);
+  }catch(e){
+    console.error(e);
+    flashStatus('Category copy failed','err',1200);
   }
 }
 
