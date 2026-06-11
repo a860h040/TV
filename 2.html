@@ -1571,15 +1571,18 @@ const HOST_DEFAULT = "http://line.trxdnscloud.ru";
 */
 const GITHUB_IMG_BASE = "https://raw.githubusercontent.com/a860h040/TV/main";
 
-/* ---------------- Proxy (kept) ---------------- */
-const PROXY_MODE = 'public'; // 'public' | 'none' | 'self'
-const PROXY_BASE = '';
+/* ---------------- Fast local proxy ----------------
+   Best way to run this app:
+   1) Put this HTML file next to server.js
+   2) Run: node server.js
+   3) Open: http://localhost:8080
 
-/* Same-origin helpers for faster loading + real Chrome downloads.
-   Use the included server.js and open http://localhost:8080 for best results.
-   - /api avoids slow public CORS proxies for the player API.
-   - /download forces MP4/MKV files into Chrome's download manager without opening a new page.
+   The local /api proxy avoids browser CORS problems and makes login much smoother.
+   If you open the HTML directly, the app will still try public fallback proxies,
+   but login/content may be slower because public proxies are unreliable.
 */
+const PROXY_MODE = 'public'; // 'public' | 'none'
+const PROXY_BASE = '';
 const API_PROXY_URL = '/api';
 const DOWNLOAD_PROXY_URL = '/download';
 
@@ -1624,44 +1627,69 @@ function escapeHtml(s){
     .replaceAll("'","&#039;");
 }
 
+function isLocalAppServer(){
+  const h = location.hostname;
+  return location.protocol !== 'file:' && (
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === '0.0.0.0' ||
+    h.startsWith('192.168.') ||
+    h.startsWith('10.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(h)
+  );
+}
 function wrapUrl(url){
   if (PROXY_MODE === 'none') return url;
-  if (PROXY_MODE === 'self') return PROXY_BASE + url;
-  return url;
+  return PROXY_BASE ? PROXY_BASE + url : url;
 }
-function fetchWithTimeout(url, ms=9000){
+function fetchWithTimeout(url, ms=5000){
   const ctrl = new AbortController();
   const t = setTimeout(()=> ctrl.abort(), ms);
-  return fetch(url, { cache:'no-store', signal: ctrl.signal }).finally(()=> clearTimeout(t));
+  return fetch(url, {
+    cache:'no-store',
+    signal: ctrl.signal,
+    headers: { 'Accept':'application/json,text/plain,*/*' }
+  }).finally(()=> clearTimeout(t));
 }
 function apiProxyUrl(url){
   const p = String(typeof API_PROXY_URL !== 'undefined' ? API_PROXY_URL : '').trim();
-  if (!p) return '';
+  if (!p || !isLocalAppServer()) return '';
   return `${p}?url=${encodeURIComponent(url)}`;
 }
 async function fetchJsonRobust(url){
   const direct = wrapUrl(url);
   const viaApi = apiProxyUrl(url);
+  const tries = [];
 
-  // Speed fix: try the same-origin /api proxy first when available. It avoids slow public CORS proxies.
-  const publicTries = [
-    ...(viaApi ? [viaApi] : []),
-    direct,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://cors.isomorphic-git.org/${url}`
-  ];
-  const tries = (PROXY_MODE === 'public') ? publicTries : [direct];
+  // 1) Fastest/recommended: local server.js /api proxy.
+  if (viaApi) tries.push(viaApi);
+
+  // 2) Direct fetch works only when CORS allows it and HTTPS is not blocking HTTP.
+  const wouldBeMixedContent = location.protocol === 'https:' && /^http:\/\//i.test(direct);
+  if (!wouldBeMixedContent) tries.push(direct);
+
+  // 3) Public fallbacks only when needed. These are slower, so timeout is shorter now.
+  if (PROXY_MODE === 'public'){
+    tries.push(
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      `https://cors.isomorphic-git.org/${url}`
+    );
+  }
 
   let lastErr = null;
   for (const u of tries){
     try{
-      const r = await fetchWithTimeout(u, 9000);
+      const r = await fetchWithTimeout(u, viaApi && u === viaApi ? 12000 : 5000);
       const text = await r.text();
-      const cleaned = pickJsonText(text);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const cleaned = pickJsonText(text).trim();
+      if (!cleaned) throw new Error('Empty response');
       return JSON.parse(cleaned);
-    }catch(e){ lastErr = e; }
+    }catch(e){
+      lastErr = e;
+      console.warn('Fetch failed, trying next method:', u, e);
+    }
   }
   throw lastErr || new Error('Fetch error');
 }
@@ -2337,21 +2365,25 @@ $('search').addEventListener('input', async ()=>{
 });
 
 /* =========================================================
-   AUTO CONNECT
+   CONNECT STATE
    ========================================================= */
 let autoConnectTimer = null;
 let isConnecting = false;
+let connectBtnOriginalHtml = '';
 
-function scheduleAutoConnect(){
-  if (S.loggedIn || isConnecting) return;
-
-  const u = $('username').value.trim();
-  const p = $('password').value.trim();
-  if (!u || !p) return;
-
-  clearTimeout(autoConnectTimer);
-  autoConnectTimer = setTimeout(()=> doConnect(), 600);
+function setConnectBusy(busy){
+  const btn = $('connect');
+  if (!btn) return;
+  if (!connectBtnOriginalHtml) connectBtnOriginalHtml = btn.innerHTML;
+  btn.disabled = !!busy;
+  btn.innerHTML = busy ? 'Connecting…' : connectBtnOriginalHtml;
 }
+
+/* Auto-connect while typing was removed on purpose.
+   Login now happens only when:
+   - you press Connect/Enter/OK, or
+   - saved login restores on page load. */
+function scheduleAutoConnect(){ return; }
 
 /* Unified URL builder for play/copy */
 function playUrlFor(kind, item){
@@ -2537,11 +2569,13 @@ async function copyText(txt){
 async function doConnect(opts={}){
   if (isConnecting || S.loggedIn) return;
 
+  clearTimeout(autoConnectTimer);
   S.user = $('username').value.trim();
   S.pass = $('password').value.trim();
   if (!S.user || !S.pass) return setStatus('Enter username & password','err');
 
   isConnecting = true;
+  setConnectBusy(true);
   setStatus(opts.silent ? 'Restoring login…' : 'Connecting…','warn');
 
   try{
@@ -2595,18 +2629,23 @@ async function doConnect(opts={}){
     setTimeout(()=> tvFocus($('username')), 60);
   } finally {
     isConnecting = false;
+    setConnectBusy(false);
   }
 }
 
 $('connect').onclick = ()=> doConnect();
 $('logout').onclick = ()=>{ clearSavedAuth(); location.reload(); };
 
-$('password').addEventListener('input', scheduleAutoConnect);
-$('password').addEventListener('change', scheduleAutoConnect);
-$('password').addEventListener('blur', scheduleAutoConnect);
-$('password').addEventListener('keyup', scheduleAutoConnect);
-$('username').addEventListener('input', scheduleAutoConnect);
-$('username').addEventListener('change', scheduleAutoConnect);
+// Smooth login: no auto-connect while typing. Press Enter/OK or click Connect.
+[$('username'), $('password')].forEach(el=>{
+  if (!el) return;
+  el.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter' || (e.keyCode||e.which) === 13){
+      e.preventDefault();
+      doConnect();
+    }
+  });
+});
 
 /* ---------------- Nav active ---------------- */
 function setActiveNav(kind){
