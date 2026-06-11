@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>STARTV — Stream UI (Hero + Rows)</title>
+<title>HAMZAWYTV — Smooth Login V2</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1563,7 +1563,7 @@
 /* =========================
    CONFIG: Host is hidden
    ========================= */
-const HOST_DEFAULT = "http://line.full8ktrex.xyz";
+const HOST_DEFAULT = "http://line.trxdnscloud.ru";
 
 /* ---------------- GitHub category image base (FIXED to use RAW) ----------------
    Your link example: https://github.com/a860h040/TV/blob/main/Netflix.png
@@ -1581,7 +1581,7 @@ const GITHUB_IMG_BASE = "https://raw.githubusercontent.com/a860h040/TV/main";
    If you open the HTML directly, the app will still try public fallback proxies,
    but login/content may be slower because public proxies are unreliable.
 */
-const PROXY_MODE = 'public'; // 'public' | 'none'
+const PROXY_MODE = 'none'; // V2: use local /api first; no slow public proxies
 const PROXY_BASE = '';
 const API_PROXY_URL = '/api';
 const DOWNLOAD_PROXY_URL = '/download';
@@ -1661,35 +1661,41 @@ async function fetchJsonRobust(url){
   const viaApi = apiProxyUrl(url);
   const tries = [];
 
-  // 1) Fastest/recommended: local server.js /api proxy.
-  if (viaApi) tries.push(viaApi);
+  // Best/recommended: local server.js /api proxy.
+  // This avoids browser CORS and mixed-content problems.
+  if (viaApi) tries.push({ label:'local /api proxy', url: viaApi, timeout: 15000 });
 
-  // 2) Direct fetch works only when CORS allows it and HTTPS is not blocking HTTP.
+  // Direct fetch is only a backup. Many IPTV servers block browser CORS.
   const wouldBeMixedContent = location.protocol === 'https:' && /^http:\/\//i.test(direct);
-  if (!wouldBeMixedContent) tries.push(direct);
+  if (!wouldBeMixedContent) tries.push({ label:'direct API', url: direct, timeout: 6000 });
 
-  // 3) Public fallbacks only when needed. These are slower, so timeout is shorter now.
-  if (PROXY_MODE === 'public'){
-    tries.push(
-      `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-      `https://cors.isomorphic-git.org/${url}`
-    );
-  }
-
+  // No public proxy fallback in V2: it was the main reason login felt frozen.
   let lastErr = null;
-  for (const u of tries){
+  for (const t of tries){
     try{
-      const r = await fetchWithTimeout(u, viaApi && u === viaApi ? 12000 : 5000);
+      const r = await fetchWithTimeout(t.url, t.timeout);
       const text = await r.text();
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const cleaned = pickJsonText(text).trim();
-      if (!cleaned) throw new Error('Empty response');
-      return JSON.parse(cleaned);
+
+      if (!r.ok){
+        const shortBody = cleaned ? cleaned.slice(0, 180) : '';
+        throw new Error(`${t.label} HTTP ${r.status}${shortBody ? ': ' + shortBody : ''}`);
+      }
+      if (!cleaned) throw new Error(`${t.label} empty response`);
+
+      try{
+        return JSON.parse(cleaned);
+      }catch(jsonErr){
+        throw new Error(`${t.label} returned non-JSON: ${cleaned.slice(0, 180)}`);
+      }
     }catch(e){
       lastErr = e;
-      console.warn('Fetch failed, trying next method:', u, e);
+      console.warn('Fetch failed:', t.label, e);
     }
+  }
+
+  if (!tries.length){
+    throw new Error('No API method available. Run node server.js and open http://localhost:8080');
   }
   throw lastErr || new Error('Fetch error');
 }
@@ -2625,7 +2631,20 @@ async function doConnect(opts={}){
     S.loggedIn = false;
     document.body.classList.remove('loggedIn');
     if (!opts.silent) clearSavedAuth();
-    setStatus('Cannot connect (API). Check host or proxy.','err');
+
+    let msg = 'Cannot connect to API.';
+    if (location.protocol === 'file:'){
+      msg = 'Do not open HTML directly. Run node server.js then open localhost:8080';
+    } else if (!isLocalAppServer()){
+      msg = 'Open with local server: http://localhost:8080';
+    } else if (String(e && e.message || '').includes('HTTP 502')){
+      msg = 'Local proxy works, but IPTV host did not answer.';
+    } else if (String(e && e.message || '').includes('non-JSON')){
+      msg = 'Host answered, but not valid API JSON.';
+    } else {
+      msg = 'Cannot connect. Check server.js window for error.';
+    }
+    setStatus(msg,'err');
     setTimeout(()=> tvFocus($('username')), 60);
   } finally {
     isConnecting = false;
